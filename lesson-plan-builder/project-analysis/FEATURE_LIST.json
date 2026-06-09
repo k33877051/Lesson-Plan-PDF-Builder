@@ -1,0 +1,129 @@
+{
+  "features": [
+    {
+      "feature": "Thai Dashboard",
+      "description": "Dashboard overview with project and lesson plan statistics, recent activity, and quick actions.",
+      "files": ["app/dashboard/page.tsx", "components/dashboard/stats-cards.tsx", "components/dashboard/recent-projects.tsx", "components/dashboard/quick-actions.tsx"]
+    },
+    {
+      "feature": "Dashboard Navigation Shell",
+      "description": "Sidebar/topbar layout used by dashboard pages.",
+      "files": ["app/dashboard/layout.tsx", "components/layout/sidebar.tsx", "components/layout/topbar.tsx"]
+    },
+    {
+      "feature": "Project Listing",
+      "description": "Lists PDF projects, status, file counts, and project actions.",
+      "files": ["app/dashboard/projects/page.tsx"]
+    },
+    {
+      "feature": "Project Creation and PDF Upload",
+      "description": "Creates a project and uploads a validated PDF file to local storage.",
+      "files": ["app/dashboard/projects/new/page.tsx", "app/api/upload-pdf/route.ts"]
+    },
+    {
+      "feature": "Project Detail",
+      "description": "Shows project metadata, uploaded PDFs, extraction status, and extracted text preview.",
+      "files": ["app/dashboard/projects/[id]/page.tsx"]
+    },
+    {
+      "feature": "Project Deletion",
+      "description": "Deletes a project, cascades database records, and removes uploaded PDF files.",
+      "files": ["components/dashboard/DeleteProjectButton.tsx", "app/api/projects/[id]/route.ts"]
+    },
+    {
+      "feature": "PDF Text Extraction",
+      "description": "Extracts text from PDF files using text-layer parsing and OCR fallback.",
+      "files": ["app/api/extract-pdf/route.ts", "lib/services/pdf-extraction.ts", "app/dashboard/projects/components/PdfExtractionButton.tsx"]
+    },
+    {
+      "feature": "Lesson Plan Listing",
+      "description": "Lists lesson plans with edit, preview, export, and delete actions.",
+      "files": ["app/dashboard/lesson-plans/page.tsx"]
+    },
+    {
+      "feature": "Lesson Plan Creation",
+      "description": "Creates draft lesson plans from a Thai form, sample data, or AI sample plan templates.",
+      "files": ["app/dashboard/lesson-plans/new/page.tsx", "app/api/lesson-plans/route.ts", "src/data/sample-ai-lesson-plans.ts", "src/data/education-levels.ts", "src/data/ai-departments.ts"]
+    },
+    {
+      "feature": "Lesson Plan Deletion",
+      "description": "Deletes lesson plans through API and refreshes the list.",
+      "files": ["components/dashboard/DeleteLessonPlanButton.tsx", "app/api/lesson-plans/[id]/route.ts"]
+    },
+    {
+      "feature": "Rich Text Editor",
+      "description": "Tiptap-based editor for lesson plan fields and draft saving.",
+      "files": ["app/(main)/editor/[id]/page.tsx", "components/editor/LessonPlanForm.tsx", "components/editor/TiptapEditor.tsx"]
+    },
+    {
+      "feature": "A4 Preview",
+      "description": "Print-like A4 lesson plan preview using Thai fonts and printable layout.",
+      "files": ["app/(main)/preview/[id]/page.tsx", "components/preview/A4Preview.tsx", "components/preview/a4-styles.css"]
+    },
+    {
+      "feature": "PDF Export",
+      "description": "Exports rendered preview pages to PDF through Playwright and stores output in public exports.",
+      "files": ["app/api/export-pdf/route.ts", "components/pdf/PDFExportButton.tsx"]
+    },
+    {
+      "feature": "AI Helper",
+      "description": "Generates objectives, key concepts, activities, assessment, summary, and media resources for editor use.",
+      "files": ["components/ai/AIHelperButton.tsx", "app/api/ai-generate/route.ts", "lib/ai/provider.ts"]
+    },
+    {
+      "feature": "AI Lesson Builder",
+      "description": "Wizard flow for entering lesson details, researching sources, generating a lesson plan, and editing output.",
+      "files": ["app/dashboard/lesson-builder/page.tsx", "components/lesson-builder/LessonPlanForm.tsx", "components/lesson-builder/ResearchJobPanel.tsx", "components/lesson-builder/ResearchSourceTable.tsx", "components/lesson-builder/LessonPlanEditor.tsx", "components/lesson-builder/LessonPlanSources.tsx"]
+    },
+    {
+      "feature": "Research Automation",
+      "description": "Creates research jobs, generates queries, collects mock/web sources, scores sources, chunks content, and tracks job status.",
+      "files": ["app/api/research-jobs/route.ts", "app/api/research/start/route.ts", "app/api/research/status/route.ts", "lib/research/research-agent.ts", "lib/research/mock-search-provider.ts", "lib/research/search-provider.ts"]
+    },
+    {
+      "feature": "Research Source Extraction",
+      "description": "Fetches source URLs, extracts readable article text, scores source quality, and creates chunks.",
+      "files": ["app/api/research/extract/route.ts", "lib/research/extract.ts", "lib/research/chunk.ts", "lib/research/scorer.ts", "lib/research/score.ts"]
+    },
+    {
+      "feature": "Citations and Source Linking",
+      "description": "Links research sources to lesson plans and formats citations.",
+      "files": ["app/api/research/sources/route.ts", "lib/research/citations.ts", "components/lesson-builder/LessonPlanSources.tsx"]
+    },
+    {
+      "feature": "AI Provider Selection",
+      "description": "Selects OpenAI or KIMI-compatible provider through environment variables.",
+      "files": ["lib/ai/provider.ts", "app/api/ai-generate/route.ts", "app/api/generate-lesson/route.ts"]
+    },
+    {
+      "feature": "Settings",
+      "description": "Manages user/profile-like settings, appearance, notifications, PDF defaults, and GitHub configuration.",
+      "files": ["app/dashboard/settings/page.tsx", "app/api/settings/route.ts"]
+    },
+    {
+      "feature": "GitHub Connection",
+      "description": "Connects a GitHub personal access token, encrypts it, checks status, lists/creates repos, and pushes code.",
+      "files": ["components/github/GitHubConnect.tsx", "components/github/GitHubPushDialog.tsx", "app/api/github/auth/route.ts", "app/api/github/status/route.ts", "app/api/github/repo/route.ts", "app/api/github/push/route.ts", "lib/github/client.ts", "lib/crypto.ts"]
+    },
+    {
+      "feature": "Health Check",
+      "description": "Checks database, uploads directory, and exports directory health.",
+      "files": ["app/api/health/route.ts"]
+    },
+    {
+      "feature": "Input Validation and Rate Limiting",
+      "description": "Uses Zod validation and in-memory rate limiting on selected APIs.",
+      "files": ["lib/rate-limit.ts", "app/api/lesson-plans/route.ts", "app/api/upload-pdf/route.ts", "app/api/export-pdf/route.ts"]
+    },
+    {
+      "feature": "HTML Sanitization",
+      "description": "Sanitizes rich text and escapes AI output before storage/rendering in key flows.",
+      "files": ["lib/sanitize-html.ts", "app/api/lesson-plans/route.ts", "app/api/lesson-plans/[id]/route.ts", "app/api/ai-generate/route.ts"]
+    },
+    {
+      "feature": "Help Page",
+      "description": "Thai-language help and guidance page.",
+      "files": ["app/dashboard/help/page.tsx"]
+    }
+  ]
+}

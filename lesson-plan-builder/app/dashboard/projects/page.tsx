@@ -18,7 +18,6 @@ import {
   FileText,
   Calendar,
   MoreVertical,
-  Trash2,
   Eye,
 } from "lucide-react";
 import {
@@ -30,6 +29,7 @@ import {
 import { prisma, checkDatabaseConnection } from "@/lib/prisma";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { DeleteProjectButton } from "@/components/dashboard/DeleteProjectButton";
 
 // Type for PDF source
 interface PdfSource {
@@ -279,10 +279,10 @@ export default async function ProjectsPage() {
                             แก้ไข
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          ลบ
-                        </DropdownMenuItem>
+                        <DeleteProjectButton
+                          projectId={project.id}
+                          projectName={project.name}
+                        />
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>

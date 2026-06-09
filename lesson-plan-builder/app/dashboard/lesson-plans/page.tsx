@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { prisma } from "@/lib/prisma";
+import { DeleteLessonPlanButton } from "@/components/dashboard/DeleteLessonPlanButton";
 
 export const metadata: Metadata = {
   title: "แผนการสอนของฉัน - Lesson Plan PDF Builder",
@@ -216,9 +217,10 @@ export default async function LessonPlansPage() {
                           ส่งออก PDF
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">
-                        ลบ
-                      </DropdownMenuItem>
+                      <DeleteLessonPlanButton
+                        lessonPlanId={plan.id}
+                        lessonTitle={plan.lessonTitle}
+                      />
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

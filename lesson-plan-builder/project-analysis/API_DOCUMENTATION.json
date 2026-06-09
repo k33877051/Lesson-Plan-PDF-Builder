@@ -1,0 +1,250 @@
+{
+  "meta": {
+    "project": "lesson-plan-builder",
+    "api_style": "Next.js App Router route handlers",
+    "authentication": "No application authentication or authorization is currently enforced",
+    "common_middleware": ["Selected routes use lib/rate-limit.ts", "Validation mostly uses Zod", "Database access uses Prisma"]
+  },
+  "routes": [
+    {
+      "route": "/api/health",
+      "method": "GET",
+      "request": {},
+      "response": { "success": "boolean", "checks": "database/uploadsDir/exportsDir status" },
+      "middleware": [],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/settings",
+      "method": "GET",
+      "request": {},
+      "response": { "success": "boolean", "data": "AppSetting" },
+      "middleware": [],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/settings",
+      "method": "PUT",
+      "request": { "body": "profile, appearance, notification and PDF settings" },
+      "response": { "success": "boolean", "data": "AppSetting" },
+      "middleware": ["Zod validation"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/upload-pdf",
+      "method": "POST",
+      "request": { "contentType": "multipart/form-data", "fields": ["projectName", "projectDescription?", "file"] },
+      "response": { "success": "boolean", "project": "Project summary", "pdfSource": "PdfSource summary" },
+      "middleware": ["rateLimit upload-pdf 10/min", "PDF MIME check", "50MB max size", "PDF magic-byte check"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/upload-pdf",
+      "method": "GET",
+      "request": {},
+      "response": { "success": "boolean", "data": "uploaded PdfSource list" },
+      "middleware": [],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/extract-pdf",
+      "method": "POST",
+      "request": { "body": { "pdfSourceId": "string" } },
+      "response": { "success": "boolean", "data": "pageCount, textLength, preview, status, metadata", "error": "string on failure" },
+      "middleware": ["rateLimit extract-pdf 10/min", "PDF extraction service", "OCR fallback"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/extract-pdf",
+      "method": "GET",
+      "request": { "query": { "pdfSourceId": "string" } },
+      "response": { "success": "boolean", "data": "stored extraction status and text preview" },
+      "middleware": ["rateLimit extract-pdf-read 60/min"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/projects/[id]",
+      "method": "DELETE",
+      "request": { "params": { "id": "string" } },
+      "response": { "success": "boolean", "message": "string" },
+      "middleware": ["rateLimit project-delete 20/min"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/lesson-plans",
+      "method": "GET",
+      "request": { "query": { "projectId": "optional string", "status": "optional string" } },
+      "response": { "success": "boolean", "data": "lesson plan list" },
+      "middleware": ["rateLimit lesson-plans-read 120/min"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/lesson-plans",
+      "method": "POST",
+      "request": { "body": "teacherName, schoolName, subjectName, gradeLevel, semester, academicYear, lessonTitle, content fields, projectId?" },
+      "response": { "success": "boolean", "data": "created LessonPlan" },
+      "middleware": ["rateLimit lesson-plans-write 30/min", "Zod validation", "sanitizeRichText"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/lesson-plans/[id]",
+      "method": "GET",
+      "request": { "params": { "id": "string" } },
+      "response": { "success": "boolean", "data": "LessonPlan" },
+      "middleware": ["rateLimit lesson-plan-read 120/min"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/lesson-plans/[id]",
+      "method": "PUT",
+      "request": { "params": { "id": "string" }, "body": "partial lesson plan update" },
+      "response": { "success": "boolean", "data": "updated LessonPlan" },
+      "middleware": ["rateLimit lesson-plan-update 60/min", "Zod validation", "sanitizeRichText"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/lesson-plans/[id]",
+      "method": "DELETE",
+      "request": { "params": { "id": "string" } },
+      "response": { "success": "boolean", "message": "ลบแผนการสอนสำเร็จ" },
+      "middleware": ["rateLimit lesson-plan-delete 20/min"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/ai-generate",
+      "method": "POST",
+      "request": { "body": { "subject": "string", "grade": "string", "lessonTitle": "string", "duration": "optional string", "context": "optional string", "researchJobId": "optional string", "useResearchSources": "optional boolean" } },
+      "response": { "success": "boolean", "data": "generated sanitized HTML sections", "citations": "optional array", "researchUsed": "optional boolean" },
+      "middleware": ["rateLimit ai-generate 5/min", "Zod validation", "AI provider config"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/generate-lesson",
+      "method": "POST",
+      "request": { "body": { "topic": "string", "subject": "string", "gradeLevel": "string", "durationMinutes": "optional number", "objectives": "optional string", "sourceIds": "string[]", "teacherName": "optional string", "schoolName": "optional string" } },
+      "response": { "success": "boolean", "lessonPlanId": "string", "lessonPlan": "created lesson plan summary", "usedSources": "array", "citations": "array" },
+      "middleware": ["Zod validation", "AI provider config", "Prisma transaction"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/research-jobs",
+      "method": "POST",
+      "request": { "body": { "topic": "string", "subject": "string", "gradeLevel": "string", "lessonPlanId": "optional string", "maxResults": "optional number", "minScore": "optional number" } },
+      "response": { "success": "boolean", "jobId": "string", "sources": "ranked ResearchSource array" },
+      "middleware": ["Zod validation", "Mock research provider"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/research-jobs",
+      "method": "GET",
+      "request": { "query": { "jobId": "string" } },
+      "response": { "success": "boolean", "job": "ResearchJob with queries and sources" },
+      "middleware": [],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/research/start",
+      "method": "POST",
+      "request": { "body": { "topic": "string", "subject": "string", "gradeLevel": "string", "lessonPlanId": "optional string" } },
+      "response": { "success": "boolean", "jobId": "string", "queryCount": "number" },
+      "middleware": ["Zod validation", "fire-and-forget research job"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/research/status",
+      "method": "GET",
+      "request": { "query": { "jobId": "string" } },
+      "response": { "success": "boolean", "job": "ResearchJob status with queries and sources" },
+      "middleware": [],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/research/extract",
+      "method": "POST",
+      "request": { "body": { "sourceId": "string" } },
+      "response": { "success": "boolean", "source": "updated ResearchSource", "chunks": "created chunk count" },
+      "middleware": ["URL content extraction", "Readability", "chunking"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/research/sources",
+      "method": "GET",
+      "request": { "query": { "jobId": "optional string", "lessonPlanId": "optional string", "minScore": "optional number" } },
+      "response": { "success": "boolean", "sources": "ResearchSource array" },
+      "middleware": [],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/research/sources",
+      "method": "POST",
+      "request": { "body": { "sourceId": "string", "lessonPlanId": "string", "citationNote": "optional string" } },
+      "response": { "success": "boolean" },
+      "middleware": ["Zod validation"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/research/sources",
+      "method": "DELETE",
+      "request": { "body": { "sourceId": "string", "lessonPlanId": "string" } },
+      "response": { "success": "boolean" },
+      "middleware": ["Zod validation"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/export-pdf",
+      "method": "POST",
+      "request": { "body": { "lessonPlanId": "string" } },
+      "response": { "success": "boolean", "downloadUrl": "string", "filename": "string" },
+      "middleware": ["rateLimit export-pdf 3/min", "Playwright Chromium"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/github/auth",
+      "method": "POST",
+      "request": { "body": { "token": "GitHub personal access token" } },
+      "response": { "success": "boolean", "username": "string", "avatarUrl": "optional string" },
+      "middleware": ["rateLimit github-auth 10/min", "Octokit token verification", "AES-GCM token encryption"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/github/auth",
+      "method": "DELETE",
+      "request": {},
+      "response": { "success": "boolean" },
+      "middleware": ["rateLimit github-auth-delete 5/min"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/github/status",
+      "method": "GET",
+      "request": {},
+      "response": { "connected": "boolean", "tokenValid": "boolean", "repositories": "array" },
+      "middleware": ["rateLimit github-status 30/min"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/github/repo",
+      "method": "GET",
+      "request": {},
+      "response": { "success": "boolean", "repositories": "array" },
+      "middleware": ["rateLimit github-repo-list 20/min"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/github/repo",
+      "method": "POST",
+      "request": { "body": { "name": "string", "description": "optional string", "isPrivate": "optional boolean", "projectId": "optional string" } },
+      "response": { "success": "boolean", "repository": "GitHubRepo" },
+      "middleware": ["rateLimit github-repo-create 5/min", "Octokit"],
+      "permissions": "public"
+    },
+    {
+      "route": "/api/github/push",
+      "method": "POST",
+      "request": { "body": { "repoId": "string", "commitMessage": "optional string", "branch": "optional string" } },
+      "response": { "success": "boolean", "commit": "optional info" },
+      "middleware": ["rateLimit github-push 5/min", "simple-git"],
+      "permissions": "public"
+    }
+  ]
+}

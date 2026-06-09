@@ -36,9 +36,23 @@ interface ExtractionResult {
       title?: string;
       author?: string;
       subject?: string;
+      method?: "text-layer" | "ocr";
+      processedPages?: number;
+      totalPages?: number;
     };
   };
   error?: string;
+}
+
+function isReadableText(text: string) {
+  const sample = text.trim().slice(0, 4000);
+  if (sample.length < 30) return false;
+
+  const replacementChars = (sample.match(/\uFFFD/g) || []).length;
+  const readableChars = (sample.match(/[\u0E00-\u0E7Fa-zA-Z0-9\s.,:;!?()[\]\-'"“”‘’/%]/g) || []).length;
+  const longGarbageRuns = /[^\u0E00-\u0E7Fa-zA-Z0-9\s.,:;!?()[\]\-'"“”‘’/%]{8,}/.test(sample);
+
+  return readableChars / sample.length >= 0.55 && replacementChars / sample.length <= 0.02 && !longGarbageRuns;
 }
 
 export function PdfExtractionButton({
@@ -52,6 +66,7 @@ export function PdfExtractionButton({
   const [isExtracting, setIsExtracting] = useState(false);
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const hasReadableText = Boolean(extractedText && isReadableText(extractedText));
 
   const handleExtract = async () => {
     setIsExtracting(true);
@@ -119,7 +134,7 @@ export function PdfExtractionButton({
     <div className="flex items-center gap-2">
       {getStatusBadge()}
 
-      {extractionStatus === "COMPLETED" && extractedText ? (
+      {extractionStatus === "COMPLETED" && hasReadableText ? (
         <Dialog open={showPreview} onOpenChange={setShowPreview}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm">
@@ -156,7 +171,9 @@ export function PdfExtractionButton({
           ) : (
             <>
               <FileSearch className="h-4 w-4 mr-2" />
-              {extractionStatus === "FAILED" ? "ลองใหม่" : "ดึงข้อความ"}
+              {extractionStatus === "FAILED" || (extractionStatus === "COMPLETED" && !hasReadableText)
+                ? "ดึงใหม่"
+                : "ดึงข้อความ"}
             </>
           )}
         </Button>

@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateObject } from "ai";
-import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { escapeHtml, sanitizeRichText } from "@/lib/sanitize-html";
 import { rateLimit } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
 import { formatChunksForContext } from "@/lib/research/chunk";
+import {
+  getAIProviderLabel,
+  getLessonPlanAIModel,
+  getMissingAIConfigKey,
+} from "@/lib/ai/provider";
 
 // Input validation schema
 const generateRequestSchema = z.object({
@@ -27,14 +31,14 @@ const lessonPlanContentSchema = z.object({
       phase: z.enum(["ก่อนเรียน", "ขณะเรียน", "หลังเรียน"]),
       title: z.string(),
       description: z.string(),
-      duration: z.string().optional(),
+      duration: z.string().describe("ระยะเวลาของกิจกรรม หากไม่ระบุให้ใช้ค่าว่าง"),
     })
   ).describe("กิจกรรมการเรียนรู้แบ่งตามขั้นตอน"),
   assessment: z.array(
     z.object({
       method: z.string(),
       criteria: z.string(),
-      tool: z.string().optional(),
+      tool: z.string().describe("เครื่องมือประเมินผล หากไม่ระบุให้ใช้ค่าว่าง"),
     })
   ).describe("วิธีการวัดและประเมินผล"),
   summary: z.string().describe("สรุปเนื้อหาหลักของบทเรียน"),
@@ -94,10 +98,12 @@ export async function POST(request: NextRequest) {
     });
     if (limited) return limited;
 
+    const missingConfigKey = getMissingAIConfigKey();
+
     // Check for API key
-    if (!process.env.OPENAI_API_KEY) {
+    if (missingConfigKey) {
       return NextResponse.json(
-        { success: false, error: "ไม่พบ OPENAI_API_KEY กรุณาตั้งค่า environment variable" },
+        { success: false, error: `ไม่พบ ${missingConfigKey} กรุณาตั้งค่า environment variable` },
         { status: 500 }
       );
     }
@@ -167,7 +173,7 @@ ${researchCitations.length > 0 ? `\nอ้างอิง:\n${researchCitations.
 
     // Generate content using AI SDK with structured output
     const { object } = await generateObject({
-      model: openai("gpt-4o-mini"),
+      model: getLessonPlanAIModel(),
       schema: lessonPlanContentSchema,
       system: systemPrompt,
       prompt: userPrompt,
@@ -252,6 +258,21 @@ ${researchCitations.length > 0 ? `\nอ้างอิง:\n${researchCitations.
         return NextResponse.json(
           { success: false, error: "เกินขีดจำกัดการใช้งาน กรุณาลองใหม่ภายหลัง" },
           { status: 429 }
+        );
+      }
+      if (error.message.includes("quota") || error.message.includes("insufficient_quota")) {
+        return NextResponse.json(
+          { success: false, error: `โควต้า ${getAIProviderLabel()} ไม่เพียงพอ กรุณาตรวจสอบแพ็กเกจหรือการชำระเงินของ API key` },
+          { status: 402 }
+        );
+      }
+      if (
+        error.message.includes("access_terminated") ||
+        error.message.includes("only available for Coding Agents")
+      ) {
+        return NextResponse.json(
+          { success: false, error: "KIMI Coding API ใช้ได้เฉพาะ Coding Agents ไม่สามารถใช้กับฟีเจอร์สร้างแผนการสอนนี้ได้โดยตรง" },
+          { status: 403 }
         );
       }
     }

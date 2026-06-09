@@ -5,7 +5,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { generateObject } from 'ai';
-import { openai } from '@ai-sdk/openai';
+import {
+  getAIProviderLabel,
+  getLessonPlanAIModel,
+  getMissingAIConfigKey,
+} from '@/lib/ai/provider';
 
 // Request validation schema
 const generateLessonSchema = z.object({
@@ -34,7 +38,9 @@ const lessonContentSchema = z.object({
         phase: z.enum(['ก่อนเรียน', 'ขณะเรียน', 'หลังเรียน']),
         title: z.string(),
         description: z.string(),
-        durationMinutes: z.number().optional(),
+        durationMinutes: z
+          .number()
+          .describe('ระยะเวลากิจกรรมเป็นนาที หากไม่ระบุให้ใช้ 0'),
       })
     )
     .describe('กิจกรรมการเรียนรู้แบ่งตามขั้นตอน'),
@@ -43,14 +49,14 @@ const lessonContentSchema = z.object({
       z.object({
         method: z.string(),
         criteria: z.string(),
-        tool: z.string().optional(),
+        tool: z.string().describe('เครื่องมือประเมินผล หากไม่ระบุให้ใช้ค่าว่าง'),
       })
     )
     .describe('วิธีการวัดและประเมินผล'),
   mediaResources: z
     .array(z.string())
     .describe('สื่อและแหล่งเรียนรู้ที่แนะนำ'),
-  notes: z.string().optional().describe('หมายเหตุเพิ่มเติม'),
+  notes: z.string().describe('หมายเหตุเพิ่มเติม หากไม่มีให้ใช้ค่าว่าง'),
 });
 
 export interface GenerateLessonResponse {
@@ -209,12 +215,14 @@ export async function POST(
       schoolName,
     } = validation.data;
 
-    // Check OpenAI API key
-    if (!process.env.OPENAI_API_KEY) {
+    const missingConfigKey = getMissingAIConfigKey();
+
+    // Check AI provider API key
+    if (missingConfigKey) {
       return NextResponse.json(
         {
           success: false,
-          error: 'ไม่พบ OPENAI_API_KEY กรุณาตั้งค่า environment variable',
+          error: `ไม่พบ ${missingConfigKey} กรุณาตั้งค่า environment variable`,
         },
         { status: 500 }
       );
@@ -303,7 +311,7 @@ ${sourcesContext}
 
     // Generate lesson plan content using AI
     const { object: generatedContent } = await generateObject({
-      model: openai('gpt-4o-mini'),
+      model: getLessonPlanAIModel(),
       schema: lessonContentSchema,
       system: systemPrompt,
       prompt: userPrompt,
@@ -404,6 +412,34 @@ ${sourcesContext}
             error: 'เกินขีดจำกัดการใช้งาน AI กรุณาลองใหม่ภายหลัง',
           },
           { status: 429 }
+        );
+      }
+
+      if (
+        error.message.includes('quota') ||
+        error.message.includes('insufficient_quota')
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              `โควต้า ${getAIProviderLabel()} ไม่เพียงพอ กรุณาตรวจสอบแพ็กเกจหรือการชำระเงินของ API key`,
+          },
+          { status: 402 }
+        );
+      }
+
+      if (
+        error.message.includes('access_terminated') ||
+        error.message.includes('only available for Coding Agents')
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              'KIMI Coding API ใช้ได้เฉพาะ Coding Agents ไม่สามารถใช้กับฟีเจอร์สร้างแผนการสอนนี้ได้โดยตรง',
+          },
+          { status: 403 }
         );
       }
 

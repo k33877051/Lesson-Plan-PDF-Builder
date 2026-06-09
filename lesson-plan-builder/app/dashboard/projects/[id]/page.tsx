@@ -11,7 +11,6 @@ import {
   Calendar,
   FolderOpen,
   Download,
-  Trash2,
   Edit,
   ExternalLink,
   FileSearch,
@@ -19,7 +18,8 @@ import {
 import { prisma } from "@/lib/prisma";
 import { PdfExtractionButton } from "../components/PdfExtractionButton";
 import { ExtractionStatus } from "@/lib/generated/prisma/client";
-import { summarizeText } from "@/lib/services/pdf-extraction";
+import { isUsableExtractedText, summarizeText } from "@/lib/services/pdf-extraction";
+import { DeleteProjectButton } from "@/components/dashboard/DeleteProjectButton";
 
 // Type for PDF source
 interface PdfSource {
@@ -36,6 +36,7 @@ interface PdfSource {
   projectId: string;
   createdAt: Date;
   updatedAt: Date;
+  hasUnusableExtractedText?: boolean;
 }
 
 interface ProjectWithPdfs {
@@ -66,10 +67,19 @@ async function getProject(id: string): Promise<ProjectWithPdfs | null> {
 
     return {
       ...project,
-      pdfSources: project.pdfSources.map((pdf) => ({
-        ...pdf,
-        extractedText: pdf.extractedText ? summarizeText(pdf.extractedText, 2000) : null,
-      })),
+      pdfSources: project.pdfSources.map((pdf) => {
+        const hasUsableText = pdf.extractedText
+          ? isUsableExtractedText(pdf.extractedText)
+          : false;
+
+        return {
+          ...pdf,
+          extractedText: hasUsableText
+            ? summarizeText(pdf.extractedText || "", 2000)
+            : null,
+          hasUnusableExtractedText: Boolean(pdf.extractedText && !hasUsableText),
+        };
+      }),
     } as ProjectWithPdfs;
   } catch (error) {
     console.error("Error fetching project:", error);
@@ -170,10 +180,11 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
               แก้ไข
             </Link>
           </Button>
-          <Button variant="destructive">
-            <Trash2 className="mr-2 h-4 w-4" />
-            ลบ
-          </Button>
+          <DeleteProjectButton
+            projectId={project.id}
+            projectName={project.name}
+            mode="button"
+          />
         </div>
       </div>
 
@@ -307,11 +318,15 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                         <span className={extractionStatusMap[pdf.extractionStatus].color}>
                           {extractionStatusMap[pdf.extractionStatus].label}
                         </span>
-                        {pdf.extractedText && (
+                        {pdf.extractedText ? (
                           <span className="text-muted-foreground">
                             (มีข้อความที่ดึงแล้ว)
                           </span>
-                        )}
+                        ) : pdf.hasUnusableExtractedText ? (
+                          <span className="text-amber-600">
+                            (ข้อความเดิมอ่านไม่ได้ กดดึงใหม่ด้วย OCR)
+                          </span>
+                        ) : null}
                       </div>
                       <PdfExtractionButton
                         pdfSourceId={pdf.id}

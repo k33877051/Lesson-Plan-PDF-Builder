@@ -1,0 +1,66 @@
+{
+  "project_name": "Lesson Plan PDF Builder",
+  "framework": "Next.js 16 App Router",
+  "frontend": "React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Radix UI, Tiptap",
+  "backend": "Next.js route handlers running on Node.js",
+  "database": "PostgreSQL via Prisma 7 and @prisma/adapter-pg",
+  "authentication": "No application authentication implemented",
+  "integrations": [
+    "OpenAI via Vercel AI SDK",
+    "KIMI OpenAI-compatible provider configuration",
+    "GitHub API via Octokit",
+    "simple-git for repository push",
+    "Playwright for PDF export",
+    "pdf-parse/pdfjs-dist/Tesseract for PDF extraction and OCR"
+  ],
+  "modules": [
+    {
+      "name": "Dashboard",
+      "description": "Thai dashboard shell with statistics, recent projects, quick actions, sidebar and topbar.",
+      "frontend_files": ["app/dashboard/page.tsx", "app/dashboard/layout.tsx", "components/layout/sidebar.tsx", "components/layout/topbar.tsx"],
+      "backend_files": []
+    },
+    {
+      "name": "Projects and PDF Upload",
+      "description": "Create projects by uploading PDFs, store metadata and files, view project details.",
+      "frontend_files": ["app/dashboard/projects/page.tsx", "app/dashboard/projects/new/page.tsx", "app/dashboard/projects/[id]/page.tsx"],
+      "backend_files": ["app/api/upload-pdf/route.ts", "app/api/projects/[id]/route.ts"]
+    },
+    {
+      "name": "PDF Extraction and OCR",
+      "description": "Extract text from uploaded PDFs using text-layer parsing and OCR fallback.",
+      "frontend_files": ["app/dashboard/projects/components/PdfExtractionButton.tsx"],
+      "backend_files": ["app/api/extract-pdf/route.ts", "lib/services/pdf-extraction.ts"]
+    },
+    {
+      "name": "Lesson Plans",
+      "description": "Create, list, edit, preview, delete, and store lesson plans.",
+      "frontend_files": ["app/dashboard/lesson-plans/page.tsx", "app/dashboard/lesson-plans/new/page.tsx", "app/(main)/editor/[id]/page.tsx", "app/(main)/preview/[id]/page.tsx"],
+      "backend_files": ["app/api/lesson-plans/route.ts", "app/api/lesson-plans/[id]/route.ts"]
+    },
+    {
+      "name": "AI Generation",
+      "description": "Generate structured lesson plan sections using configured AI provider.",
+      "frontend_files": ["components/ai/AIHelperButton.tsx"],
+      "backend_files": ["app/api/ai-generate/route.ts", "app/api/generate-lesson/route.ts", "lib/ai/provider.ts"]
+    },
+    {
+      "name": "Research Automation",
+      "description": "Generate research jobs, search sources, score sources, chunk content, and link citations.",
+      "frontend_files": ["components/research/ResearchPanel.tsx", "components/lesson-builder/ResearchSourceTable.tsx", "app/dashboard/lesson-builder/page.tsx"],
+      "backend_files": ["app/api/research-jobs/route.ts", "app/api/research/start/route.ts", "app/api/research/status/route.ts", "app/api/research/sources/route.ts", "app/api/research/extract/route.ts", "lib/research"]
+    },
+    {
+      "name": "PDF Export",
+      "description": "Render lesson plan preview and export as PDF using Playwright.",
+      "frontend_files": ["components/pdf/PDFExportButton.tsx", "components/preview/A4Preview.tsx"],
+      "backend_files": ["app/api/export-pdf/route.ts"]
+    },
+    {
+      "name": "Settings and GitHub",
+      "description": "Manage profile/settings and GitHub integration.",
+      "frontend_files": ["app/dashboard/settings/page.tsx", "components/github/GitHubConnect.tsx", "components/github/GitHubPushDialog.tsx"],
+      "backend_files": ["app/api/settings/route.ts", "app/api/github/auth/route.ts", "app/api/github/status/route.ts", "app/api/github/repo/route.ts", "app/api/github/push/route.ts", "lib/github/client.ts", "lib/crypto.ts"]
+    }
+  ]
+}

@@ -91,23 +91,31 @@ export async function POST(request: NextRequest) {
             subject: extractionResult.info.Subject,
             creator: extractionResult.info.Creator,
             version: extractionResult.version,
+            method: extractionResult.method,
+            processedPages: extractionResult.metadata?.processedPages,
+            totalPages: extractionResult.metadata?.totalPages,
           },
         },
       });
     } catch (extractError) {
+      const message =
+        extractError instanceof Error
+          ? extractError.message
+          : "เกิดข้อผิดพลาดที่ไม่คาดคิด";
+
       // อัปเดตสถานะเป็นผิดพลาด
       await prisma.pdfSource.update({
         where: { id: pdfSourceId },
         data: {
           extractionStatus: ExtractionStatus.FAILED,
-          extractionError:
-            extractError instanceof Error
-              ? extractError.message
-              : "เกิดข้อผิดพลาดที่ไม่คาดคิด",
+          extractionError: message,
         },
       });
 
-      throw extractError;
+      return NextResponse.json(
+        { success: false, error: message },
+        { status: 422 }
+      );
     }
   } catch (error) {
     console.error("PDF extraction API error:", error);
@@ -164,6 +172,9 @@ export async function GET(request: NextRequest) {
           : null,
         extractionStatus: pdfSource.extractionStatus,
         extractionError: pdfSource.extractionError,
+        metadata: {
+          method: null,
+        },
         project: {
           id: pdfSource.project.id,
           name: pdfSource.project.name,

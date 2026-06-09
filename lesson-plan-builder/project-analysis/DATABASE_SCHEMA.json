@@ -1,0 +1,300 @@
+{
+  "meta": {
+    "project": "lesson-plan-builder",
+    "orm": "Prisma",
+    "provider": "postgresql",
+    "client_output": "lib/generated/prisma",
+    "migrations": [
+      "20260609110747_init",
+      "20260609115237_add_app_settings",
+      "20260609124231_add_github_integration",
+      "20260609133713_add_ai_research_models"
+    ]
+  },
+  "enums": [
+    { "name": "ExtractionStatus", "values": ["PENDING", "PROCESSING", "COMPLETED", "FAILED"] },
+    { "name": "LessonPlanStatus", "values": ["DRAFT", "FINAL", "ARCHIVED"] },
+    { "name": "ResearchStatus", "values": ["PENDING", "RUNNING", "COMPLETED", "FAILED"] }
+  ],
+  "tables": [
+    {
+      "name": "Project",
+      "columns": [
+        { "name": "id", "type": "String", "required": true, "default": "cuid()" },
+        { "name": "name", "type": "String", "required": true },
+        { "name": "description", "type": "String", "required": false },
+        { "name": "status", "type": "String", "required": true, "default": "active" },
+        { "name": "createdAt", "type": "DateTime", "required": true, "default": "now()" },
+        { "name": "updatedAt", "type": "DateTime", "required": true, "updatedAt": true }
+      ],
+      "primary_key": ["id"],
+      "indexes": [],
+      "constraints": [],
+      "relationships": [
+        { "type": "one_to_many", "target": "PdfSource", "foreign_key": "PdfSource.projectId", "on_delete": "Cascade" },
+        { "type": "one_to_many", "target": "LessonPlan", "foreign_key": "LessonPlan.projectId", "on_delete": "SetNull" },
+        { "type": "one_to_many", "target": "GitHubRepo", "foreign_key": "GitHubRepo.projectId", "on_delete": "SetNull" }
+      ]
+    },
+    {
+      "name": "PdfSource",
+      "columns": [
+        { "name": "id", "type": "String", "required": true, "default": "cuid()" },
+        { "name": "filename", "type": "String", "required": true },
+        { "name": "originalName", "type": "String", "required": true },
+        { "name": "filePath", "type": "String", "required": true },
+        { "name": "fileSize", "type": "Int", "required": true },
+        { "name": "fileType", "type": "String", "required": true },
+        { "name": "pageCount", "type": "Int", "required": false },
+        { "name": "extractedText", "type": "Text", "required": false },
+        { "name": "extractionStatus", "type": "ExtractionStatus", "required": true, "default": "PENDING" },
+        { "name": "extractionError", "type": "String", "required": false },
+        { "name": "projectId", "type": "String", "required": true },
+        { "name": "createdAt", "type": "DateTime", "required": true, "default": "now()" },
+        { "name": "updatedAt", "type": "DateTime", "required": true, "updatedAt": true }
+      ],
+      "primary_key": ["id"],
+      "indexes": [],
+      "constraints": [],
+      "relationships": [
+        { "type": "many_to_one", "target": "Project", "foreign_key": "projectId", "on_delete": "Cascade" }
+      ],
+      "storage": "PDF files live in public/uploads; database stores metadata, status and extracted text."
+    },
+    {
+      "name": "User",
+      "columns": [
+        { "name": "id", "type": "String", "required": true, "default": "cuid()" },
+        { "name": "email", "type": "String", "required": true },
+        { "name": "name", "type": "String", "required": false },
+        { "name": "createdAt", "type": "DateTime", "required": true, "default": "now()" },
+        { "name": "updatedAt", "type": "DateTime", "required": true, "updatedAt": true }
+      ],
+      "primary_key": ["id"],
+      "indexes": [],
+      "constraints": [{ "type": "unique", "columns": ["email"] }],
+      "relationships": [
+        { "type": "one_to_many", "target": "LessonPlan", "foreign_key": "LessonPlan.userId" }
+      ],
+      "notes": "Defined for future auth/ownership but not currently used by application flows."
+    },
+    {
+      "name": "LessonPlan",
+      "columns": [
+        { "name": "id", "type": "String", "required": true, "default": "cuid()" },
+        { "name": "teacherName", "type": "String", "required": false },
+        { "name": "schoolName", "type": "String", "required": false },
+        { "name": "subjectName", "type": "String", "required": true },
+        { "name": "gradeLevel", "type": "String", "required": true },
+        { "name": "semester", "type": "String", "required": true },
+        { "name": "academicYear", "type": "String", "required": true },
+        { "name": "lessonTitle", "type": "String", "required": true },
+        { "name": "topic", "type": "String", "required": false },
+        { "name": "durationMinutes", "type": "Int", "required": false },
+        { "name": "standards", "type": "String", "required": false },
+        { "name": "objectives", "type": "Text", "required": true },
+        { "name": "objectivesJson", "type": "Json", "required": false },
+        { "name": "keyConcepts", "type": "Text", "required": true },
+        { "name": "keyConceptsJson", "type": "Json", "required": false },
+        { "name": "learningActivities", "type": "Text", "required": true },
+        { "name": "learningActivitiesJson", "type": "Json", "required": false },
+        { "name": "mediaResources", "type": "Text", "required": true },
+        { "name": "mediaResourcesJson", "type": "Json", "required": false },
+        { "name": "assessment", "type": "Text", "required": true },
+        { "name": "assessmentJson", "type": "Json", "required": false },
+        { "name": "notes", "type": "Text", "required": false },
+        { "name": "notesJson", "type": "Json", "required": false },
+        { "name": "userId", "type": "String", "required": false },
+        { "name": "status", "type": "String", "required": true, "default": "draft" },
+        { "name": "aiStatus", "type": "LessonPlanStatus", "required": false, "default": "DRAFT" },
+        { "name": "projectId", "type": "String", "required": false },
+        { "name": "createdAt", "type": "DateTime", "required": true, "default": "now()" },
+        { "name": "updatedAt", "type": "DateTime", "required": true, "updatedAt": true }
+      ],
+      "primary_key": ["id"],
+      "indexes": ["projectId", "status", "userId"],
+      "constraints": [],
+      "relationships": [
+        { "type": "many_to_one", "target": "User", "foreign_key": "userId" },
+        { "type": "many_to_one", "target": "Project", "foreign_key": "projectId", "on_delete": "SetNull" },
+        { "type": "one_to_many", "target": "ResearchJob", "foreign_key": "ResearchJob.lessonPlanId" },
+        { "type": "many_to_many", "target": "ResearchSource", "through": "LessonPlanSource" }
+      ]
+    },
+    {
+      "name": "ResearchJob",
+      "columns": [
+        { "name": "id", "type": "String", "required": true, "default": "cuid()" },
+        { "name": "topic", "type": "String", "required": true },
+        { "name": "subject", "type": "String", "required": true },
+        { "name": "gradeLevel", "type": "String", "required": true },
+        { "name": "status", "type": "ResearchStatus", "required": true, "default": "PENDING" },
+        { "name": "lessonPlanId", "type": "String", "required": false },
+        { "name": "createdAt", "type": "DateTime", "required": true, "default": "now()" },
+        { "name": "updatedAt", "type": "DateTime", "required": true, "updatedAt": true }
+      ],
+      "primary_key": ["id"],
+      "indexes": ["lessonPlanId", "status"],
+      "constraints": [],
+      "relationships": [
+        { "type": "many_to_one", "target": "LessonPlan", "foreign_key": "lessonPlanId", "on_delete": "SetNull" },
+        { "type": "one_to_many", "target": "ResearchQuery", "foreign_key": "ResearchQuery.researchJobId", "on_delete": "Cascade" },
+        { "type": "one_to_many", "target": "ResearchSource", "foreign_key": "ResearchSource.researchJobId", "on_delete": "SetNull" }
+      ]
+    },
+    {
+      "name": "ResearchQuery",
+      "columns": [
+        { "name": "id", "type": "String", "required": true, "default": "cuid()" },
+        { "name": "researchJobId", "type": "String", "required": true },
+        { "name": "query", "type": "String", "required": true },
+        { "name": "platform", "type": "String", "required": true, "default": "web" },
+        { "name": "status", "type": "ResearchStatus", "required": true, "default": "PENDING" },
+        { "name": "resultsCount", "type": "Int", "required": false },
+        { "name": "createdAt", "type": "DateTime", "required": true, "default": "now()" }
+      ],
+      "primary_key": ["id"],
+      "indexes": ["researchJobId"],
+      "constraints": [],
+      "relationships": [
+        { "type": "many_to_one", "target": "ResearchJob", "foreign_key": "researchJobId", "on_delete": "Cascade" }
+      ]
+    },
+    {
+      "name": "ResearchSource",
+      "columns": [
+        { "name": "id", "type": "String", "required": true, "default": "cuid()" },
+        { "name": "researchJobId", "type": "String", "required": false },
+        { "name": "title", "type": "String", "required": true },
+        { "name": "url", "type": "String", "required": true },
+        { "name": "platform", "type": "String", "required": true, "default": "web" },
+        { "name": "author", "type": "String", "required": false },
+        { "name": "publishedAt", "type": "DateTime", "required": false },
+        { "name": "snippet", "type": "Text", "required": false },
+        { "name": "fullText", "type": "Text", "required": false },
+        { "name": "credibilityScore", "type": "Float", "required": true, "default": 0 },
+        { "name": "relevanceScore", "type": "Float", "required": true, "default": 0 },
+        { "name": "license", "type": "String", "required": false },
+        { "name": "language", "type": "String", "required": true, "default": "th" },
+        { "name": "createdAt", "type": "DateTime", "required": true, "default": "now()" }
+      ],
+      "primary_key": ["id"],
+      "indexes": [],
+      "constraints": [{ "type": "unique", "columns": ["url"] }],
+      "relationships": [
+        { "type": "many_to_one", "target": "ResearchJob", "foreign_key": "researchJobId", "on_delete": "SetNull" },
+        { "type": "one_to_many", "target": "SourceChunk", "foreign_key": "SourceChunk.sourceId", "on_delete": "Cascade" },
+        { "type": "many_to_many", "target": "LessonPlan", "through": "LessonPlanSource" }
+      ]
+    },
+    {
+      "name": "SourceChunk",
+      "columns": [
+        { "name": "id", "type": "String", "required": true, "default": "cuid()" },
+        { "name": "sourceId", "type": "String", "required": true },
+        { "name": "content", "type": "Text", "required": true },
+        { "name": "summary", "type": "Text", "required": false },
+        { "name": "embedding", "type": "Json", "required": false },
+        { "name": "createdAt", "type": "DateTime", "required": true, "default": "now()" }
+      ],
+      "primary_key": ["id"],
+      "indexes": ["sourceId"],
+      "constraints": [],
+      "relationships": [
+        { "type": "many_to_one", "target": "ResearchSource", "foreign_key": "sourceId", "on_delete": "Cascade" }
+      ]
+    },
+    {
+      "name": "LessonPlanSource",
+      "columns": [
+        { "name": "id", "type": "String", "required": true, "default": "cuid()" },
+        { "name": "lessonPlanId", "type": "String", "required": true },
+        { "name": "sourceId", "type": "String", "required": true },
+        { "name": "citationNote", "type": "String", "required": false }
+      ],
+      "primary_key": ["id"],
+      "indexes": ["lessonPlanId", "sourceId"],
+      "constraints": [{ "type": "unique", "columns": ["lessonPlanId", "sourceId"] }],
+      "relationships": [
+        { "type": "many_to_one", "target": "LessonPlan", "foreign_key": "lessonPlanId", "on_delete": "Cascade" },
+        { "type": "many_to_one", "target": "ResearchSource", "foreign_key": "sourceId", "on_delete": "Cascade" }
+      ]
+    },
+    {
+      "name": "AppSetting",
+      "columns": [
+        { "name": "id", "type": "String", "required": true },
+        { "name": "name", "type": "String", "required": false },
+        { "name": "email", "type": "String", "required": false },
+        { "name": "phone", "type": "String", "required": false },
+        { "name": "school", "type": "String", "required": false },
+        { "name": "position", "type": "String", "required": false },
+        { "name": "theme", "type": "String", "required": true, "default": "system" },
+        { "name": "fontSize", "type": "String", "required": true, "default": "medium" },
+        { "name": "language", "type": "String", "required": true, "default": "th" },
+        { "name": "emailAlerts", "type": "Boolean", "required": true, "default": true },
+        { "name": "exportComplete", "type": "Boolean", "required": true, "default": true },
+        { "name": "newFeatures", "type": "Boolean", "required": true, "default": false },
+        { "name": "weeklyReport", "type": "Boolean", "required": true, "default": true },
+        { "name": "defaultFont", "type": "String", "required": true, "default": "sarabun" },
+        { "name": "defaultHeader", "type": "Boolean", "required": true, "default": true },
+        { "name": "defaultFooter", "type": "Boolean", "required": true, "default": true },
+        { "name": "pageSize", "type": "String", "required": true, "default": "a4" },
+        { "name": "margin", "type": "String", "required": true, "default": "normal" },
+        { "name": "createdAt", "type": "DateTime", "required": true, "default": "now()" },
+        { "name": "updatedAt", "type": "DateTime", "required": true, "updatedAt": true }
+      ],
+      "primary_key": ["id"],
+      "indexes": [],
+      "constraints": [],
+      "relationships": [
+        { "type": "one_to_one", "target": "GitHubIntegration", "foreign_key": "GitHubIntegration.appSettingId", "on_delete": "Cascade" }
+      ]
+    },
+    {
+      "name": "GitHubIntegration",
+      "columns": [
+        { "name": "id", "type": "String", "required": true, "default": "cuid()" },
+        { "name": "encryptedToken", "type": "Text", "required": true },
+        { "name": "username", "type": "String", "required": true },
+        { "name": "avatarUrl", "type": "String", "required": false },
+        { "name": "isActive", "type": "Boolean", "required": true, "default": true },
+        { "name": "lastSyncedAt", "type": "DateTime", "required": false },
+        { "name": "appSettingId", "type": "String", "required": true },
+        { "name": "createdAt", "type": "DateTime", "required": true, "default": "now()" },
+        { "name": "updatedAt", "type": "DateTime", "required": true, "updatedAt": true }
+      ],
+      "primary_key": ["id"],
+      "indexes": [],
+      "constraints": [{ "type": "unique", "columns": ["appSettingId"] }],
+      "relationships": [
+        { "type": "many_to_one", "target": "AppSetting", "foreign_key": "appSettingId", "on_delete": "Cascade" },
+        { "type": "one_to_many", "target": "GitHubRepo", "foreign_key": "GitHubRepo.integrationId", "on_delete": "Cascade" }
+      ]
+    },
+    {
+      "name": "GitHubRepo",
+      "columns": [
+        { "name": "id", "type": "String", "required": true, "default": "cuid()" },
+        { "name": "name", "type": "String", "required": true },
+        { "name": "fullName", "type": "String", "required": true },
+        { "name": "description", "type": "String", "required": false },
+        { "name": "url", "type": "String", "required": true },
+        { "name": "sshUrl", "type": "String", "required": false },
+        { "name": "isPrivate", "type": "Boolean", "required": true, "default": false },
+        { "name": "defaultBranch", "type": "String", "required": true, "default": "main" },
+        { "name": "integrationId", "type": "String", "required": true },
+        { "name": "projectId", "type": "String", "required": false },
+        { "name": "createdAt", "type": "DateTime", "required": true, "default": "now()" },
+        { "name": "updatedAt", "type": "DateTime", "required": true, "updatedAt": true }
+      ],
+      "primary_key": ["id"],
+      "indexes": ["integrationId", "projectId"],
+      "constraints": [],
+      "relationships": [
+        { "type": "many_to_one", "target": "GitHubIntegration", "foreign_key": "integrationId", "on_delete": "Cascade" },
+        { "type": "many_to_one", "target": "Project", "foreign_key": "projectId", "on_delete": "SetNull" }
+      ]
+    }
+  ]
+}

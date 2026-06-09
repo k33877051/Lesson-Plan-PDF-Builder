@@ -1,7 +1,33 @@
-import { readFile, stat } from "fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "fs/promises";
+import { tmpdir } from "os";
 import { basename, join, normalize } from "path";
 
 const MAX_PARSE_SIZE = 50 * 1024 * 1024;
+const DEFAULT_OCR_MAX_PAGES = 5;
+const OCR_SCALE = 1.5;
+
+type ExtractionMethod = "text-layer" | "ocr";
+
+interface ParsedPdfResult {
+  text: string;
+  numpages: number;
+  info: PdfExtractionResult["info"];
+  version?: string;
+  metadata?: Record<string, unknown>;
+  method: ExtractionMethod;
+}
+
+class PdfNeedsOcrError extends Error {
+  constructor(message = "PDF ต้องใช้ OCR เพื่ออ่านข้อความ") {
+    super(message);
+    this.name = "PdfNeedsOcrError";
+  }
+}
+
+const runtimeImport = new Function(
+  "specifier",
+  "return import(specifier)"
+) as <T>(specifier: string) => Promise<T>;
 
 function sanitizePdfText(text: string): string {
   return text
@@ -10,9 +36,30 @@ function sanitizePdfText(text: string): string {
     .normalize("NFC");
 }
 
+export function isUsableExtractedText(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length < 30) return false;
+
+  const sample = trimmed.slice(0, 4000);
+  const replacementChars = (sample.match(/\uFFFD/g) || []).length;
+  const readableChars = (sample.match(/[\u0E00-\u0E7Fa-zA-Z0-9\s.,:;!?()[\]\-'"“”‘’/%]/g) || []).length;
+  const whitespaceChars = (sample.match(/\s/g) || []).length;
+  const longGarbageRuns = /[^\u0E00-\u0E7Fa-zA-Z0-9\s.,:;!?()[\]\-'"“”‘’/%]{8,}/.test(sample);
+  const readableRatio = readableChars / sample.length;
+  const replacementRatio = replacementChars / sample.length;
+  const whitespaceRatio = whitespaceChars / sample.length;
+
+  return (
+    readableRatio >= 0.55 &&
+    replacementRatio <= 0.02 &&
+    whitespaceRatio >= 0.03 &&
+    !longGarbageRuns
+  );
+}
+
 // Use pdf-parse-fork which works better in server environments
 // Or use a pure JS alternative
-async function parsePdf(buffer: Buffer) {
+async function parsePdf(buffer: Buffer): Promise<ParsedPdfResult> {
   try {
     // Try using pdf-parse library
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -23,66 +70,107 @@ async function parsePdf(buffer: Buffer) {
       max: 0, // No page limit
     });
 
+    const text = sanitizePdfText(result.text || "");
+
+    if (!isUsableExtractedText(text)) {
+      throw new PdfNeedsOcrError();
+    }
+
     return {
-      text: result.text || '',
+      text,
       numpages: result.numpages || 1,
       info: result.info || {},
       version: result.version,
       metadata: result.metadata,
+      method: "text-layer" as ExtractionMethod,
     };
   } catch (error) {
-    // If pdf-parse fails, try alternative approach
-    console.warn("Primary PDF parser failed, trying alternative:", error);
+    if (error instanceof PdfNeedsOcrError) {
+      throw error;
+    }
 
-    // Fallback: Try to extract text using basic PDF structure parsing
-    return fallbackPdfParse(buffer);
+    console.warn("Primary PDF parser failed, falling back to OCR:", error);
+    throw new PdfNeedsOcrError();
   }
 }
 
-// Basic fallback parser for simple PDFs
-function fallbackPdfParse(buffer: Buffer): {
-  text: string;
-  numpages: number;
-  info: Record<string, string>;
-  version?: string;
-  metadata?: Record<string, unknown>;
-} {
-  const content = buffer.toString('utf-8', 0, Math.min(buffer.length, 100000));
+async function ocrPdf(buffer: Buffer): Promise<ParsedPdfResult> {
+  const pdfjs = await runtimeImport<typeof import("pdfjs-dist/legacy/build/pdf.mjs")>(
+    "pdfjs-dist/legacy/build/pdf.mjs"
+  );
+  const { createCanvas } = await runtimeImport<typeof import("@napi-rs/canvas")>(
+    "@napi-rs/canvas"
+  );
+  const { createWorker } = await runtimeImport<typeof import("tesseract.js")>(
+    "tesseract.js"
+  );
 
-  // Extract text from PDF content streams (basic regex approach)
-  // This is a simplified approach that works for text-based PDFs
-  let text = '';
+  const maxPages = Number(process.env.PDF_OCR_MAX_PAGES || DEFAULT_OCR_MAX_PAGES);
+  const loadingTask = pdfjs.getDocument({
+    data: new Uint8Array(buffer),
+    disableFontFace: true,
+    useSystemFonts: true,
+  });
+  const pdf = await loadingTask.promise;
+  const totalPages = pdf.numPages;
+  const pageLimit = Math.min(totalPages, Number.isFinite(maxPages) ? maxPages : DEFAULT_OCR_MAX_PAGES);
+  const worker = await createWorker("tha+eng");
+  const pageTexts: string[] = [];
 
-  // Look for text objects in PDF
-  const textRegex = /\(([^)]+)\)/g;
-  const matches = content.match(textRegex);
+  try {
+    await worker.setParameters({
+      preserve_interword_spaces: "1",
+      user_defined_dpi: "180",
+    });
 
-  if (matches) {
-    text = matches
-      .map(m => m.slice(1, -1)) // Remove parentheses
-      .filter(m => m.length > 2 && !/^\d+$/.test(m)) // Filter out short strings and numbers
-      .join(' ');
+    for (let pageNumber = 1; pageNumber <= pageLimit; pageNumber += 1) {
+      const page = await pdf.getPage(pageNumber);
+      const viewport = page.getViewport({ scale: OCR_SCALE });
+      const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
+      const context = canvas.getContext("2d");
+
+      const renderParams = {
+        canvas,
+        canvasContext: context,
+        viewport,
+      } as unknown as Parameters<typeof page.render>[0];
+
+      await page.render(renderParams).promise;
+
+      const image = canvas.toBuffer("image/png");
+      const result = await worker.recognize(image);
+      const text = sanitizePdfText(result.data.text || "").trim();
+
+      if (text) {
+        pageTexts.push(`--- หน้า ${pageNumber} ---\n${text}`);
+      }
+
+      page.cleanup();
+    }
+  } finally {
+    await worker.terminate();
+    await pdf.destroy();
   }
 
-  // If no text found, return empty but valid result
-  if (!text || text.length < 10) {
-    text = '[PDF นี้อาจเป็นไฟล์สแกนหรือมีการเข้ารหัส ไม่สามารถดึงข้อความโดยอัตโนมัติได้]';
+  const text = sanitizePdfText(pageTexts.join("\n\n"));
+
+  if (!isUsableExtractedText(text)) {
+    throw new Error(
+      "ไม่สามารถดึงข้อความที่อ่านได้จาก PDF นี้ได้ อาจเป็นไฟล์สแกนคุณภาพต่ำหรือมีการเข้ารหัส"
+    );
   }
-
-  // Extract PDF version
-  const versionMatch = content.match(/%PDF-(\d+\.\d+)/);
-  const version = versionMatch ? versionMatch[1] : undefined;
-
-  // Estimate page count from /Type /Page references
-  const pageMatches = content.match(/\/Type\s*\/Page/g);
-  const numpages = pageMatches ? pageMatches.length : 1;
 
   return {
-    text: sanitizePdfText(text).slice(0, 50000), // Limit text length
-    numpages,
+    text,
+    numpages: totalPages,
     info: {},
-    version,
-    metadata: {},
+    version: undefined,
+    metadata: {
+      method: "ocr",
+      processedPages: pageLimit,
+      totalPages,
+    },
+    method: "ocr" as ExtractionMethod,
   };
 }
 
@@ -124,6 +212,7 @@ export interface PdfExtractionResult {
   };
   version?: string;
   metadata?: Record<string, unknown>;
+  method: ExtractionMethod;
 }
 
 export interface PdfExtractionError {
@@ -143,8 +232,18 @@ export async function extractTextFromPdf(
     // อ่านไฟล์ PDF
     const pdfBuffer = await readPdfBuffer(filePath);
 
-    // ดึงข้อความจาก PDF
-    const result = await parsePdf(pdfBuffer);
+    let result: ParsedPdfResult;
+
+    try {
+      // ดึงข้อความจาก text layer ก่อน ถ้าใช้ไม่ได้ค่อย OCR
+      result = await parsePdf(pdfBuffer);
+    } catch (error) {
+      if (!(error instanceof PdfNeedsOcrError)) {
+        throw error;
+      }
+
+      result = await ocrPdf(pdfBuffer);
+    }
 
     return {
       text: sanitizePdfText(result.text),
@@ -152,6 +251,7 @@ export async function extractTextFromPdf(
       info: result.info,
       version: result.version,
       metadata: result.metadata,
+      method: result.method,
     };
   } catch (error) {
     console.error("PDF extraction error:", error);
