@@ -387,6 +387,55 @@ If adding tests in the future, the project has `playwright` installed for E2E te
 
 ---
 
+## Cursor Cloud specific instructions
+
+### บริการที่ต้องรัน
+
+| บริการ | คำสั่ง | หมายเหตุ |
+|--------|--------|----------|
+| PostgreSQL 16 | `sudo service postgresql start` | ไม่รวมใน update script — ต้องสตาร์ทก่อนรันแอป ถ้า `pg_isready` ล้มเหลว |
+| Next.js dev server | `cd lesson-plan-builder && npm run dev` | พอร์ต `3000` |
+
+### การตั้งค่า `.env` (ครั้งแรกเท่านั้น)
+
+ไฟล์ `lesson-plan-builder/.env` ไม่ได้ commit ใน git ต้องสร้างเอง:
+
+```env
+DATABASE_URL="postgresql://lessonplan:lessonplan@localhost:5432/lessonplan"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+
+ถ้ายังไม่มี database/user ให้รัน (ครั้งแรกบน VM ใหม่):
+
+```bash
+sudo service postgresql start
+sudo -u postgres psql -c "CREATE USER lessonplan WITH PASSWORD 'lessonplan' CREATEDB;"
+sudo -u postgres psql -c "CREATE DATABASE lessonplan OWNER lessonplan;"
+cd lesson-plan-builder && npx prisma migrate deploy
+```
+
+`OPENAI_API_KEY` ไม่บังคับสำหรับ CRUD/dashboard — จำเป็นเฉพาะฟีเจอร์ AI
+
+### คำสั่งพัฒนา
+
+รันจาก `lesson-plan-builder/` — ดูรายละเอียดใน [Build & Development Commands](#build--development-commands) ด้านบน
+
+- **Lint:** `npm run lint` — มี ESLint errors 3 รายการที่มีอยู่แล้วในโค้ดเบส (ไม่บล็อก build)
+- **Build/TypeScript:** `npm run build`
+- **Health check:** `curl http://localhost:3000/api/health` — ตรวจ DB + โฟลเดอร์ `public/uploads` และ `public/exports`
+- **ไม่มี test script** ใน `package.json`
+
+### ฟีเจอร์เสริม (ไม่บังคับ)
+
+- **ส่งออก PDF server-side** (`/api/export-pdf`): ต้อง `npx playwright install chromium` ก่อน
+- **AI / Research:** ต้องตั้ง `OPENAI_API_KEY` และ/หรือ `TAVILY_API_KEY` ตามฟีเจอร์
+
+### tmux
+
+ใช้ tmux สำหรับ dev server ที่รันค้างไว้ เช่น session `nextjs-dev-server`
+
+---
+
 ## External Documentation References
 
 - **Architecture**: See `ARCHITECTURE.md` in the project root (high-level design docs)
