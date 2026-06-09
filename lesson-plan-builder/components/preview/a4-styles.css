@@ -1,0 +1,384 @@
+/* A4 Preview Styles */
+
+/* Preview Container */
+.preview-container {
+  min-height: 100vh;
+  background-color: #f3f4f6;
+  padding: 2rem 1rem;
+  font-family: "Sarabun", "Noto Sans Thai", "Prompt", system-ui, sans-serif;
+}
+
+/* Toolbar */
+.preview-toolbar {
+  max-width: 210mm;
+  margin: 0 auto 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 0.75rem 1rem;
+}
+
+/* A4 Page */
+.a4-page {
+  background-color: white;
+  margin: 0 auto;
+  position: relative;
+  width: 210mm;
+  min-height: 297mm;
+  padding: 20mm;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  font-family: "Sarabun", "Noto Sans Thai", sans-serif;
+  font-size: 14pt;
+  line-height: 1.8;
+  color: #1a1a1a;
+}
+
+/* Header / Letterhead */
+.a4-header {
+  border-bottom: 2px solid #1e3a8a;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo-circle {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background-color: #1e3a8a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-icon {
+  font-size: 1.875rem;
+}
+
+.header-title {
+  flex: 1;
+}
+
+.school-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e3a8a;
+  font-family: "Prompt", "Noto Sans Thai", sans-serif;
+  letter-spacing: 0.5px;
+}
+
+.document-type {
+  font-size: 1.125rem;
+  color: #4b5563;
+  margin-top: 0.25rem;
+  font-family: "Noto Sans Thai", sans-serif;
+}
+
+/* Teacher Info Section */
+.teacher-info {
+  background-color: #f9fafb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #1e40af;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .info-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.info-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: "Noto Sans Thai", sans-serif;
+}
+
+.info-value {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #111827;
+  font-family: "Sarabun", sans-serif;
+}
+
+/* Lesson Title Section */
+.lesson-title-section {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #d1d5db;
+}
+
+.lesson-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e3a8a;
+  font-family: "Prompt", "Noto Sans Thai", sans-serif;
+  line-height: 1.4;
+}
+
+/* Content Sections */
+.content-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.content-section {
+  break-inside: avoid;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.75rem;
+  font-family: "Prompt", "Noto Sans Thai", sans-serif;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+.section-number {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background-color: #1e3a8a;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-family: "Prompt", sans-serif;
+  flex-shrink: 0;
+}
+
+.section-content {
+  padding-left: 2.75rem;
+  font-family: "Sarabun", "Noto Sans Thai", sans-serif;
+  line-height: 1.8;
+}
+
+/* Rich Text Content Styling */
+.section-content p {
+  margin-bottom: 0.75rem;
+  color: #1f2937;
+  text-indent: 2em;
+}
+
+.section-content p:first-child {
+  text-indent: 0;
+}
+
+.section-content ul,
+.section-content ol {
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.section-content ul {
+  list-style-type: disc;
+}
+
+.section-content ol {
+  list-style-type: decimal;
+}
+
+.section-content li {
+  margin-bottom: 0.25rem;
+}
+
+.section-content h1,
+.section-content h2,
+.section-content h3 {
+  font-weight: 600;
+  color: #111827;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-family: "Prompt", "Noto Sans Thai", sans-serif;
+}
+
+.section-content h1 {
+  font-size: 1.25rem;
+}
+
+.section-content h2 {
+  font-size: 1.125rem;
+}
+
+.section-content h3 {
+  font-size: 1rem;
+}
+
+.section-content strong,
+.section-content b {
+  font-weight: 700;
+  color: #111827;
+}
+
+.section-content em,
+.section-content i {
+  font-style: italic;
+}
+
+/* Footer */
+.a4-footer {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #d1d5db;
+}
+
+.footer-line {
+  width: 100%;
+  height: 1px;
+  background-color: #d1d5db;
+  margin-bottom: 0.75rem;
+}
+
+.footer-text {
+  font-size: 0.75rem;
+  text-align: center;
+  color: #6b7280;
+  font-family: "Noto Sans Thai", sans-serif;
+}
+
+/* Page Number */
+.page-number {
+  position: absolute;
+  bottom: 1rem;
+  right: 1.5rem;
+  font-size: 0.875rem;
+  color: #9ca3af;
+  font-family: "Prompt", sans-serif;
+}
+
+/* Print Styles */
+@media print {
+  .preview-container {
+    background-color: white;
+    padding: 0;
+  }
+  
+  .preview-toolbar {
+    display: none !important;
+  }
+  
+  .a4-page {
+    box-shadow: none;
+    margin: 0;
+    width: 210mm;
+    min-height: 297mm;
+    padding: 15mm;
+    page-break-after: always;
+  }
+  
+  .content-section {
+    break-inside: avoid;
+  }
+  
+  .section-title {
+    page-break-after: avoid;
+  }
+  
+  .section-content {
+    page-break-before: avoid;
+  }
+  
+  body {
+    font-family: "Sarabun", "Noto Sans Thai", sans-serif !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .a4-page {
+    width: 100%;
+    padding: 1rem;
+    min-height: auto;
+    font-size: 12pt;
+  }
+  
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .section-title {
+    font-size: 1rem;
+  }
+  
+  .lesson-title {
+    font-size: 1.25rem;
+  }
+}
+
+/* Custom Scrollbar for Preview */
+.preview-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.preview-container::-webkit-scrollbar-track {
+  background-color: #f3f4f6;
+}
+
+.preview-container::-webkit-scrollbar-thumb {
+  background-color: #9ca3af;
+  border-radius: 9999px;
+}
+
+.preview-container::-webkit-scrollbar-thumb:hover {
+  background-color: #6b7280;
+}
+
+/* Thai Typography Improvements */
+.thai-heading {
+  font-family: "Prompt", "Noto Sans Thai", sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.thai-body {
+  font-family: "Sarabun", "Noto Sans Thai", sans-serif;
+  line-height: 1.9;
+}
+
+/* Highlight Box for Important Info */
+.highlight-box {
+  background-color: #eff6ff;
+  border-left: 4px solid #3b82f6;
+  padding: 1rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.highlight-box-title {
+  font-weight: 600;
+  color: #1e3a8a;
+  margin-bottom: 0.5rem;
+  font-family: "Prompt", sans-serif;
+}

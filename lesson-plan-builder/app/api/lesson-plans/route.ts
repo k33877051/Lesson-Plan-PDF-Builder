@@ -1,0 +1,182 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+import { sanitizeRichText } from "@/lib/sanitize-html";
+import { rateLimit } from "@/lib/rate-limit";
+
+const lessonPlanCreateSchema = z.object({
+  teacherName: z.string().max(120).optional().nullable(),
+  schoolName: z.string().max(160).optional().nullable(),
+  subjectName: z.string().min(1).max(80),
+  gradeLevel: z.string().min(1).max(80),
+  semester: z.string().max(40).optional().default(""),
+  academicYear: z.string().max(20).optional().default(""),
+  lessonTitle: z.string().min(1).max(200),
+  objectives: z.string().max(50000).optional().default(""),
+  objectivesJson: z.unknown().optional().nullable(),
+  keyConcepts: z.string().max(50000).optional().default(""),
+  keyConceptsJson: z.unknown().optional().nullable(),
+  learningActivities: z.string().max(100000).optional().default(""),
+  learningActivitiesJson: z.unknown().optional().nullable(),
+  mediaResources: z.string().max(50000).optional().default(""),
+  mediaResourcesJson: z.unknown().optional().nullable(),
+  assessment: z.string().max(50000).optional().default(""),
+  assessmentJson: z.unknown().optional().nullable(),
+  notes: z.string().max(50000).optional().nullable(),
+  notesJson: z.unknown().optional().nullable(),
+  projectId: z.string().optional().nullable(),
+});
+
+/**
+ * GET /api/lesson-plans
+ * ดึงรายการแผนการสอนทั้งหมด
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const limited = rateLimit(request, "lesson-plans-read", {
+      windowMs: 60_000,
+      maxRequests: 120,
+    });
+    if (limited) return limited;
+
+    const { searchParams } = new URL(request.url);
+    const projectId = searchParams.get("projectId");
+    const status = searchParams.get("status");
+
+    const where: {
+      projectId?: string;
+      status?: string;
+    } = {};
+
+    if (projectId) where.projectId = projectId;
+    if (status) where.status = status;
+
+    const lessonPlans = await prisma.lessonPlan.findMany({
+      where,
+      select: {
+        id: true,
+        teacherName: true,
+        schoolName: true,
+        subjectName: true,
+        gradeLevel: true,
+        semester: true,
+        academicYear: true,
+        lessonTitle: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        project: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: lessonPlans,
+    });
+  } catch (error) {
+    console.error("Get lesson plans error:", error);
+    return NextResponse.json(
+      { error: "เกิดข้อผิดพลาดในการดึงข้อมูล" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/lesson-plans
+ * สร้างแผนการสอนใหม่
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const limited = rateLimit(request, "lesson-plans-write", {
+      windowMs: 60_000,
+      maxRequests: 30,
+    });
+    if (limited) return limited;
+
+    const body = await request.json();
+    const validation = lessonPlanCreateSchema.safeParse(body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          error: "ข้อมูลแผนการสอนไม่ถูกต้อง",
+          details: validation.error.issues.map((issue) => ({
+            field: issue.path.join("."),
+            message: issue.message,
+          })),
+        },
+        { status: 400 }
+      );
+    }
+
+    const {
+      teacherName,
+      schoolName,
+      subjectName,
+      gradeLevel,
+      semester,
+      academicYear,
+      lessonTitle,
+      objectives,
+      objectivesJson,
+      keyConcepts,
+      keyConceptsJson,
+      learningActivities,
+      learningActivitiesJson,
+      mediaResources,
+      mediaResourcesJson,
+      assessment,
+      assessmentJson,
+      notes,
+      notesJson,
+      projectId,
+    } = validation.data;
+
+    const lessonPlan = await prisma.lessonPlan.create({
+      data: {
+        teacherName: teacherName || null,
+        schoolName: schoolName || null,
+        subjectName,
+        gradeLevel,
+        semester: semester || "",
+        academicYear: academicYear || "",
+        lessonTitle,
+        objectives: sanitizeRichText(objectives),
+        objectivesJson: objectivesJson ?? undefined,
+        keyConcepts: sanitizeRichText(keyConcepts),
+        keyConceptsJson: keyConceptsJson ?? undefined,
+        learningActivities: sanitizeRichText(learningActivities),
+        learningActivitiesJson: learningActivitiesJson ?? undefined,
+        mediaResources: sanitizeRichText(mediaResources),
+        mediaResourcesJson: mediaResourcesJson ?? undefined,
+        assessment: sanitizeRichText(assessment),
+        assessmentJson: assessmentJson ?? undefined,
+        notes: notes ? sanitizeRichText(notes) : null,
+        notesJson: notesJson ?? undefined,
+        projectId: projectId || null,
+        status: "draft",
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "สร้างแผนการสอนสำเร็จ",
+      data: lessonPlan,
+    });
+  } catch (error) {
+    console.error("Create lesson plan error:", error);
+    return NextResponse.json(
+      { error: "เกิดข้อผิดพลาดในการสร้างแผนการสอน" },
+      { status: 500 }
+    );
+  }
+}

@@ -1,0 +1,43 @@
+---
+alwaysApply: true
+---
+# Thai First Development
+
+ตอบกลับเป็นภาษาไทยเสมอ
+
+Project:
+Lesson Plan PDF Builder
+
+Technology:
+- Next.js
+- TypeScript
+- Prisma
+- PostgreSQL
+- Tailwind
+- shadcn/ui
+- PDF Parser
+
+Requirements:
+
+- UI ภาษาไทย
+- Dashboard ภาษาไทย
+- Admin ภาษาไทย
+- Documentation ภาษาไทย
+
+หลังทำงานทุกครั้งให้สรุป:
+
+## งานที่เสร็จแล้ว
+
+## ไฟล์ที่สร้าง
+
+## ไฟล์ที่แก้ไข
+
+## Migration ที่เพิ่ม
+
+## API ที่สร้าง
+
+## ปัญหาที่พบ
+
+## ขั้นตอนถัดไป
+
+อธิบายแบบนักพัฒนาไทยอ่านแล้วเข้าใจทันที

@@ -1,0 +1,289 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Project {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  status      String       @default("active")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  pdfSources  PdfSource[]
+  lessonPlans LessonPlan[]
+  githubRepos GitHubRepo[]
+}
+
+enum ExtractionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model PdfSource {
+  id              String           @id @default(cuid())
+  filename        String
+  originalName    String
+  filePath        String
+  fileSize        Int
+  fileType        String
+  pageCount       Int?
+  extractedText   String?          @db.Text
+  extractionStatus ExtractionStatus @default(PENDING)
+  extractionError String?
+  projectId       String
+  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+// User model for AI Research features
+model User {
+  id          String       @id @default(cuid())
+  email       String       @unique
+  name        String?
+  lessonPlans LessonPlan[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+// AI Research enums
+enum LessonPlanStatus {
+  DRAFT
+  FINAL
+  ARCHIVED
+}
+
+enum ResearchStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model LessonPlan {
+  id                String             @id @default(cuid())
+  
+  // ข้อมูลพื้นฐาน
+  teacherName       String?
+  schoolName        String?
+  subjectName       String
+  gradeLevel        String
+  semester          String
+  academicYear      String
+  lessonTitle       String
+  
+  // AI Research fields (optional)
+  topic             String?            // หัวข้อสำหรับ AI research
+  durationMinutes   Int?               // ระยะเวลาเป็นคาบหรือนาที
+  standards         String?            // มาตรฐานการเรียนรู้
+  
+  // เนื้อหา (Tiptap JSON)
+  objectives        String             @db.Text // วัตถุประสงค์
+  objectivesJson    Json?              // เก็บ Tiptap JSON structure
+  
+  keyConcepts       String             @db.Text // แนวคิดสำคัญ
+  keyConceptsJson   Json?              // เก็บ Tiptap JSON structure
+  
+  learningActivities String            @db.Text // กิจกรรมการเรียนรู้
+  learningActivitiesJson Json?        // เก็บ Tiptap JSON structure
+  
+  mediaResources    String             @db.Text // สื่อและแหล่งเรียนรู้
+  mediaResourcesJson Json?             // เก็บ Tiptap JSON structure
+  
+  assessment        String             @db.Text // การวัดและประเมินผล
+  assessmentJson    Json?              // เก็บ Tiptap JSON structure
+  
+  notes             String?            @db.Text // หมายเหตุ
+  notesJson         Json?              // เก็บ Tiptap JSON structure
+  
+  // AI Research relations
+  userId            String?
+  user              User?              @relation(fields: [userId], references: [id])
+  sources           LessonPlanSource[]
+  researchJobs        ResearchJob[]
+  
+  // สถานะและ metadata - support both old and new status
+  status            String             @default("draft") // draft, published, archived, DRAFT, FINAL
+  aiStatus          LessonPlanStatus?  @default(DRAFT)
+  
+  // ความสัมพันธ์
+  projectId         String?
+  project           Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  
+  @@index([projectId])
+  @@index([status])
+  @@index([userId])
+}
+
+// AI Research Job tracking
+model ResearchJob {
+  id          String          @id @default(cuid())
+  topic       String
+  subject     String
+  gradeLevel  String
+  status      ResearchStatus  @default(PENDING)
+  queries     ResearchQuery[]
+  sources     ResearchSource[]
+  lessonPlanId String?
+  lessonPlan  LessonPlan?     @relation(fields: [lessonPlanId], references: [id], onDelete: SetNull)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  @@index([lessonPlanId])
+  @@index([status])
+}
+
+// Individual search queries per platform
+model ResearchQuery {
+  id            String          @id @default(cuid())
+  researchJobId String
+  researchJob   ResearchJob     @relation(fields: [researchJobId], references: [id], onDelete: Cascade)
+  query         String
+  platform      String          @default("web") // web, google, youtube, reddit, etc.
+  status        ResearchStatus  @default(PENDING)
+  resultsCount  Int?
+  createdAt     DateTime        @default(now())
+  
+  @@index([researchJobId])
+}
+
+// Found research sources
+model ResearchSource {
+  id                String             @id @default(cuid())
+  researchJobId     String?
+  researchJob     ResearchJob?       @relation(fields: [researchJobId], references: [id], onDelete: SetNull)
+  title             String
+  url               String             @unique
+  platform          String             @default("web") // web, youtube, social, academic
+  author            String?
+  publishedAt       DateTime?
+  snippet           String?            @db.Text
+  fullText          String?            @db.Text
+  credibilityScore  Float              @default(0)
+  relevanceScore    Float              @default(0)
+  license           String?
+  language          String             @default("th")
+  chunks            SourceChunk[]
+  lessonPlans       LessonPlanSource[]
+  createdAt         DateTime           @default(now())
+}
+
+// Content chunks for RAG
+model SourceChunk {
+  id        String         @id @default(cuid())
+  sourceId  String
+  source    ResearchSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  content   String         @db.Text
+  summary   String?        @db.Text
+  embedding Json?          // Vector embedding for similarity search
+  createdAt DateTime       @default(now())
+  
+  @@index([sourceId])
+}
+
+// Junction: LessonPlan <-> ResearchSource
+model LessonPlanSource {
+  id           String         @id @default(cuid())
+  lessonPlanId String
+  lessonPlan   LessonPlan     @relation(fields: [lessonPlanId], references: [id], onDelete: Cascade)
+  sourceId     String
+  source       ResearchSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  citationNote String?        // Custom citation note for this lesson plan
+  
+  @@unique([lessonPlanId, sourceId])
+  @@index([lessonPlanId])
+  @@index([sourceId])
+}
+
+model AppSetting {
+  id             String   @id
+  name           String?
+  email          String?
+  phone          String?
+  school         String?
+  position       String?
+  theme          String   @default("system")
+  fontSize       String   @default("medium")
+  language       String   @default("th")
+  emailAlerts    Boolean  @default(true)
+  exportComplete Boolean  @default(true)
+  newFeatures    Boolean  @default(false)
+  weeklyReport   Boolean  @default(true)
+  defaultFont    String   @default("sarabun")
+  defaultHeader  Boolean  @default(true)
+  defaultFooter  Boolean  @default(true)
+  pageSize       String   @default("a4")
+  margin         String   @default("normal")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // GitHub Integration
+  githubIntegration GitHubIntegration?
+}
+
+model GitHubIntegration {
+  id           String   @id @default(cuid())
+  
+  // Token (encrypted) - store the actual encrypted token
+  encryptedToken String   @db.Text
+  
+  // User info from GitHub
+  username     String
+  avatarUrl    String?
+  
+  // Connected repositories
+  repositories GitHubRepo[]
+  
+  // Status
+  isActive     Boolean  @default(true)
+  lastSyncedAt DateTime?
+  
+  // Relations
+  appSetting   AppSetting @relation(fields: [appSettingId], references: [id], onDelete: Cascade)
+  appSettingId String   @unique
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model GitHubRepo {
+  id           String   @id @default(cuid())
+  
+  // Repository info
+  name         String
+  fullName     String
+  description  String?
+  url          String
+  sshUrl       String?
+  isPrivate    Boolean  @default(false)
+  defaultBranch String  @default("main")
+  
+  // Relation to GitHubIntegration
+  integration  GitHubIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  integrationId String
+  
+  // Linked project (optional)
+  project      Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId    String?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@index([integrationId])
+  @@index([projectId])
+}
