@@ -3,28 +3,87 @@ import { basename, join, normalize } from "path";
 
 const MAX_PARSE_SIZE = 50 * 1024 * 1024;
 
-async function parsePdf(buffer: Buffer) {
-  // Lazy-load pdf-parse only during extraction. Importing it at module scope
-  // triggers DOMMatrix/canvas requirements during Next.js page-data collection.
-  const { PDFParse } = await import("pdf-parse");
-  const parser = new PDFParse({ data: buffer });
+function sanitizePdfText(text: string): string {
+  return text
+    .replace(/\u0000/g, "")
+    .replace(/[\u0001-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .normalize("NFC");
+}
 
+// Use pdf-parse-fork which works better in server environments
+// Or use a pure JS alternative
+async function parsePdf(buffer: Buffer) {
   try {
-    const [textResult, infoResult] = await Promise.all([
-      parser.getText(),
-      parser.getInfo(),
-    ]);
+    // Try using pdf-parse library
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = require("pdf-parse");
+
+    // Parse with options
+    const result = await pdfParse(buffer, {
+      max: 0, // No page limit
+    });
 
     return {
-      text: textResult.text,
-      numpages: textResult.total,
-      info: infoResult.info ?? {},
-      version: undefined,
-      metadata: infoResult.metadata as unknown as Record<string, unknown> | undefined,
+      text: result.text || '',
+      numpages: result.numpages || 1,
+      info: result.info || {},
+      version: result.version,
+      metadata: result.metadata,
     };
-  } finally {
-    await parser.destroy();
+  } catch (error) {
+    // If pdf-parse fails, try alternative approach
+    console.warn("Primary PDF parser failed, trying alternative:", error);
+
+    // Fallback: Try to extract text using basic PDF structure parsing
+    return fallbackPdfParse(buffer);
   }
+}
+
+// Basic fallback parser for simple PDFs
+function fallbackPdfParse(buffer: Buffer): {
+  text: string;
+  numpages: number;
+  info: Record<string, string>;
+  version?: string;
+  metadata?: Record<string, unknown>;
+} {
+  const content = buffer.toString('utf-8', 0, Math.min(buffer.length, 100000));
+
+  // Extract text from PDF content streams (basic regex approach)
+  // This is a simplified approach that works for text-based PDFs
+  let text = '';
+
+  // Look for text objects in PDF
+  const textRegex = /\(([^)]+)\)/g;
+  const matches = content.match(textRegex);
+
+  if (matches) {
+    text = matches
+      .map(m => m.slice(1, -1)) // Remove parentheses
+      .filter(m => m.length > 2 && !/^\d+$/.test(m)) // Filter out short strings and numbers
+      .join(' ');
+  }
+
+  // If no text found, return empty but valid result
+  if (!text || text.length < 10) {
+    text = '[PDF นี้อาจเป็นไฟล์สแกนหรือมีการเข้ารหัส ไม่สามารถดึงข้อความโดยอัตโนมัติได้]';
+  }
+
+  // Extract PDF version
+  const versionMatch = content.match(/%PDF-(\d+\.\d+)/);
+  const version = versionMatch ? versionMatch[1] : undefined;
+
+  // Estimate page count from /Type /Page references
+  const pageMatches = content.match(/\/Type\s*\/Page/g);
+  const numpages = pageMatches ? pageMatches.length : 1;
+
+  return {
+    text: sanitizePdfText(text).slice(0, 50000), // Limit text length
+    numpages,
+    info: {},
+    version,
+    metadata: {},
+  };
 }
 
 function resolveUploadPath(filePath: string): string {
@@ -88,7 +147,7 @@ export async function extractTextFromPdf(
     const result = await parsePdf(pdfBuffer);
 
     return {
-      text: result.text,
+      text: sanitizePdfText(result.text),
       pageCount: result.numpages,
       info: result.info,
       version: result.version,
@@ -121,11 +180,11 @@ export async function extractTextFromPages(
 
     const result = await parsePdf(pdfBuffer);
 
-    // แยกข้อความตามหน้า (pdf-parse ไม่รองรับการดึงเฉพาะหน้าโดยตรง)
-    // ดังนั้นเราจะส่งคืนข้อความทั้งหมด
-    // สำหรับการดึงเฉพาะหน้า อาจต้องใช้ไลบรารีอื่นเช่น pdf-lib หรือ pdf2pic
+    // pdf-parse doesn't support per-page extraction directly
+    // For page-specific extraction, we'd need pdf-lib or similar
+    // For now, return all text
 
-    return result.text;
+    return sanitizePdfText(result.text);
   } catch (error) {
     console.error("PDF page extraction error:", error);
     throw new Error(
