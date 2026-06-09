@@ -15,19 +15,55 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, ChevronLeft } from "lucide-react";
+import { sampleLessonPlans } from "@/src/data/sample-lesson-plans";
+import { AlertCircle, BookOpenText, ChevronLeft } from "lucide-react";
 
 export default function NewLessonPlanPage() {
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSamplePicker, setShowSamplePicker] = useState(false);
+  const [selectedSampleId, setSelectedSampleId] = useState("");
   const [lessonPlanData, setLessonPlanData] = useState({
     lessonTitle: "",
     subjectName: "",
     gradeLevel: "",
     semester: "1",
     academicYear: new Date().getFullYear() + 543 + "",
+    durationMinutes: "",
+    teacherName: "",
+    schoolName: "",
+    objectives: "",
+    keyConcepts: "",
+    learningActivities: "",
+    mediaResources: "",
+    assessment: "",
+    notes: "",
   });
+
+  const handleSelectSample = (sampleId: string) => {
+    setSelectedSampleId(sampleId);
+
+    const sample = sampleLessonPlans.find((item) => item.id === sampleId);
+    if (!sample) return;
+
+    setLessonPlanData({
+      lessonTitle: sample.title,
+      subjectName: sample.subject,
+      gradeLevel: sample.gradeLevel,
+      semester: sample.semester,
+      academicYear: sample.academicYear,
+      durationMinutes: sample.duration.toString(),
+      teacherName: sample.teacherName,
+      schoolName: sample.schoolName,
+      objectives: sample.learningObjectives,
+      keyConcepts: sample.keyConcepts,
+      learningActivities: sample.learningActivities,
+      mediaResources: sample.mediaResources,
+      assessment: sample.assessment,
+      notes: sample.notes,
+    });
+  };
 
   const handleCreate = async () => {
     setError(null);
@@ -39,12 +75,9 @@ export default function NewLessonPlanPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...lessonPlanData,
-          objectives: "",
-          keyConcepts: "",
-          learningActivities: "",
-          mediaResources: "",
-          assessment: "",
-          notes: "",
+          durationMinutes: lessonPlanData.durationMinutes
+            ? Number(lessonPlanData.durationMinutes)
+            : undefined,
         }),
       });
 
@@ -85,6 +118,50 @@ export default function NewLessonPlanPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+      {/* Sample Lesson Plans */}
+      <Card className="border-dashed">
+        <CardHeader>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpenText className="h-5 w-5" />
+                ตัวอย่างแผนการสอน
+              </CardTitle>
+              <CardDescription>
+                เลือกตัวอย่างหลายวิชาเพื่อเติมข้อมูลลงฟอร์มอัตโนมัติ
+              </CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant={showSamplePicker ? "secondary" : "outline"}
+              onClick={() => setShowSamplePicker((value) => !value)}
+            >
+              ใช้ตัวอย่างแผนการสอน
+            </Button>
+          </div>
+        </CardHeader>
+        {showSamplePicker && (
+          <CardContent className="space-y-2">
+            <Label htmlFor="sampleLessonPlan">เลือกตัวอย่างตามวิชา</Label>
+            <Select value={selectedSampleId} onValueChange={handleSelectSample}>
+              <SelectTrigger id="sampleLessonPlan">
+                <SelectValue placeholder="เลือกตัวอย่างแผนการสอน" />
+              </SelectTrigger>
+              <SelectContent>
+                {sampleLessonPlans.map((sample) => (
+                  <SelectItem key={sample.id} value={sample.id}>
+                    {sample.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              เมื่อเลือกแล้ว ระบบจะเติมข้อมูลพื้นฐานและเนื้อหาแผนการสอนให้ทันที
+            </p>
+          </CardContent>
+        )}
+      </Card>
 
       {/* Basic Information */}
       <Card>
@@ -130,6 +207,8 @@ export default function NewLessonPlanPage() {
                   <SelectItem value="art">ศิลปะ</SelectItem>
                   <SelectItem value="music">ดนตรี</SelectItem>
                   <SelectItem value="computer">คอมพิวเตอร์</SelectItem>
+                  <SelectItem value="career">การงานอาชีพ</SelectItem>
+                  <SelectItem value="nutrition">อาหารและโภชนาการ</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -187,6 +266,44 @@ export default function NewLessonPlanPage() {
                   setLessonPlanData((prev) => ({ ...prev, academicYear: e.target.value }))
                 }
                 placeholder="เช่น 2568"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="durationMinutes">ระยะเวลา (นาที)</Label>
+              <Input
+                id="durationMinutes"
+                value={lessonPlanData.durationMinutes}
+                onChange={(e) =>
+                  setLessonPlanData((prev) => ({
+                    ...prev,
+                    durationMinutes: e.target.value,
+                  }))
+                }
+                placeholder="เช่น 60"
+                type="number"
+                min="1"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="teacherName">ชื่อครูผู้สอน</Label>
+              <Input
+                id="teacherName"
+                value={lessonPlanData.teacherName}
+                onChange={(e) =>
+                  setLessonPlanData((prev) => ({ ...prev, teacherName: e.target.value }))
+                }
+                placeholder="เช่น ครูสมชาย ใจดี"
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="schoolName">ชื่อโรงเรียน</Label>
+              <Input
+                id="schoolName"
+                value={lessonPlanData.schoolName}
+                onChange={(e) =>
+                  setLessonPlanData((prev) => ({ ...prev, schoolName: e.target.value }))
+                }
+                placeholder="เช่น โรงเรียนตัวอย่าง"
               />
             </div>
           </div>
