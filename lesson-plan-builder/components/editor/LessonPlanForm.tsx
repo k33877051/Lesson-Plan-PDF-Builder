@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Save, Loader2, FileDown, Eye, BookOpen } from "lucide-react";
 import { AIHelperButton } from "@/components/ai/AIHelperButton";
 import { ResearchPanel } from "@/components/research/ResearchPanel";
+import { EditorWizard, EDITOR_WIZARD_STEPS } from "@/components/editor/EditorWizard";
 
 // Dynamic import for TiptapEditor to avoid SSR issues
 const TiptapEditor = dynamic(() => import("./TiptapEditor").then((mod) => mod.TiptapEditor), {
@@ -212,6 +213,19 @@ export function LessonPlanForm({
 
   const isValid = formData.subjectName && formData.gradeLevel && formData.lessonTitle;
 
+  const wizardStep =
+    activeTab === "review"
+      ? "review"
+      : activeTab === "research"
+        ? "research"
+        : activeTab === "content"
+          ? "content"
+          : "basic";
+
+  const handleWizardStepChange = (stepId: string) => {
+    setActiveTab(stepId === "review" ? "review" : stepId);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -253,14 +267,21 @@ export function LessonPlanForm({
         </div>
       </div>
 
+      <EditorWizard
+        steps={EDITOR_WIZARD_STEPS}
+        currentStep={wizardStep}
+        onStepChange={handleWizardStepChange}
+      />
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="basic">ข้อมูลพื้นฐาน</TabsTrigger>
-          <TabsTrigger value="content">เนื้อหาแผนการสอน</TabsTrigger>
-          <TabsTrigger value="research">
+        <TabsList className="flex h-auto w-full justify-start overflow-x-auto md:grid md:grid-cols-4">
+          <TabsTrigger value="basic" className="shrink-0">ข้อมูลพื้นฐาน</TabsTrigger>
+          <TabsTrigger value="content" className="shrink-0">เนื้อหาแผนการสอน</TabsTrigger>
+          <TabsTrigger value="research" className="shrink-0">
             <BookOpen className="h-4 w-4 mr-1" />
             ค้นคว้า AI
           </TabsTrigger>
+          <TabsTrigger value="review" className="shrink-0">ตรวจสอบ</TabsTrigger>
         </TabsList>
 
         {/* Basic Info Tab */}
@@ -564,6 +585,57 @@ export function LessonPlanForm({
               setActiveTab("content");
             }}
           />
+        </TabsContent>
+
+        <TabsContent value="review" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>สรุปก่อนบันทึก</CardTitle>
+              <CardDescription>ตรวจสอบข้อมูลสำคัญก่อนบันทึกหรือดูตัวอย่าง</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">ชื่อหน่วย</p>
+                  <p className="font-medium">{formData.lessonTitle || "—"}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">วิชา / ระดับชั้น</p>
+                  <p className="font-medium">
+                    {subjects.find((s) => s.value === formData.subjectName)?.label || formData.subjectName || "—"} •{" "}
+                    {gradeLevels.find((g) => g.value === formData.gradeLevel)?.label || formData.gradeLevel || "—"}
+                  </p>
+                </div>
+                <div className="rounded-lg border p-3 sm:col-span-2">
+                  <p className="text-xs text-muted-foreground">ครู / โรงเรียน</p>
+                  <p className="font-medium">
+                    {formData.teacherName || "—"} {formData.schoolName ? `• ${formData.schoolName}` : ""}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                {onPreview && (
+                  <Button variant="outline" onClick={onPreview} disabled={isNew}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    ดูตัวอย่าง
+                  </Button>
+                )}
+                <Button onClick={handleSave} disabled={isSaving || !isValid}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      กำลังบันทึก...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      บันทึกแผนการสอน
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

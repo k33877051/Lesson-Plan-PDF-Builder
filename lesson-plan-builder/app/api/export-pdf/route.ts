@@ -4,6 +4,8 @@ import fs from "fs";
 import path from "path";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
+import { writeAuditLog } from "@/lib/audit-log";
+import { invalidateDashboardStatsCache } from "@/lib/dashboard-stats-cache";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -141,6 +143,15 @@ export async function POST(request: NextRequest): Promise<NextResponse<ExportPdf
 
     // Return download URL
     const downloadUrl = `/exports/${filename}`;
+
+    await writeAuditLog(request, {
+      action: "export",
+      resourceType: "lesson_plan",
+      resourceId: lessonPlanId,
+      metadata: { filename, downloadUrl },
+    });
+
+    invalidateDashboardStatsCache();
 
     return NextResponse.json({
       success: true,

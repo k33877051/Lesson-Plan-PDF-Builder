@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Search, User, Sun, Moon } from "lucide-react";
+import { Bell, Search, User, Sun, Moon, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,48 +12,51 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { setAppTheme } from "@/components/layout/theme-sync";
 
-export function Topbar() {
+interface TopbarProps {
+  onMenuClick?: () => void;
+}
+
+export function Topbar({ onMenuClick }: TopbarProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [notificationCount] = useState(3);
 
+  useEffect(() => {
+    setIsDarkMode(document.documentElement.classList.contains("dark"));
+  }, []);
+
   const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-    document.documentElement.classList.toggle("dark");
+    const next = !isDarkMode;
+    setIsDarkMode(next);
+    setAppTheme(next ? "dark" : "light");
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b bg-card px-6">
-      {/* Search */}
-      <div className="flex items-center gap-4 flex-1 max-w-xl">
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="ค้นหาแผนการสอน..."
-            className="pl-10 w-full"
-          />
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-3">
-        {/* Theme Toggle */}
+    <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b bg-card/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-card/80 md:h-16 md:px-6">
+      <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-4">
         <Button
           variant="ghost"
           size="icon"
-          onClick={toggleTheme}
-          className="text-muted-foreground"
+          className="shrink-0 md:hidden"
+          onClick={onMenuClick}
+          aria-label="เปิดเมนู"
         >
-          {isDarkMode ? (
-            <Sun className="h-5 w-5" />
-          ) : (
-            <Moon className="h-5 w-5" />
-          )}
+          <Menu className="h-5 w-5" />
+        </Button>
+        <div className="relative hidden min-w-0 flex-1 max-w-md sm:block">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input type="search" placeholder="ค้นหาแผนการสอน..." className="w-full pl-10" />
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1 md:gap-3">
+        <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-muted-foreground">
+          {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
 
-        {/* Notifications */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative text-muted-foreground">
@@ -71,37 +74,13 @@ export function Topbar() {
           <DropdownMenuContent align="end" className="w-80">
             <DropdownMenuLabel>การแจ้งเตือน</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <div className="max-h-80 overflow-auto">
-              <DropdownMenuItem className="flex flex-col items-start gap-1 p-3">
-                <p className="text-sm font-medium">แผนการสอนถูกสร้างสำเร็จ</p>
-                <p className="text-xs text-muted-foreground">
-                  แผนการสอน &quot;วิทยาศาสตร์ ม.1&quot; สร้างเสร็จแล้ว
-                </p>
-                <p className="text-xs text-muted-foreground">5 นาทีที่แล้ว</p>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="flex flex-col items-start gap-1 p-3">
-                <p className="text-sm font-medium">นำเข้าไฟล์สำเร็จ</p>
-                <p className="text-xs text-muted-foreground">
-                  ไฟล์ lesson_plan.docx ถูกนำเข้าเรียบร้อย
-                </p>
-                <p className="text-xs text-muted-foreground">1 ชั่วโมงที่แล้ว</p>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="flex flex-col items-start gap-1 p-3">
-                <p className="text-sm font-medium">อัปเดตระบบ</p>
-                <p className="text-xs text-muted-foreground">
-                  ระบบถูกอัปเดตเป็นเวอร์ชันล่าสุด
-                </p>
-                <p className="text-xs text-muted-foreground">1 วันที่แล้ว</p>
-              </DropdownMenuItem>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="justify-center text-sm text-primary">
-              ดูการแจ้งเตือนทั้งหมด
+            <DropdownMenuItem className="flex flex-col items-start gap-1 p-3">
+              <p className="text-sm font-medium">แผนการสอนถูกสร้างสำเร็จ</p>
+              <p className="text-xs text-muted-foreground">5 นาทีที่แล้ว</p>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="text-muted-foreground">
@@ -111,11 +90,8 @@ export function Topbar() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>บัญชีของฉัน</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>โปรไฟล์</DropdownMenuItem>
-            <DropdownMenuItem>ตั้งค่า</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
-              ออกจากระบบ
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/settings">ตั้งค่า</Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

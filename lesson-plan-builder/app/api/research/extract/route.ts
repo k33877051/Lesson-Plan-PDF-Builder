@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { rateLimit } from '@/lib/rate-limit';
 import { extractContent } from '@/lib/research/extract';
 import {
   calculateSourceScore,
@@ -43,6 +44,12 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<ExtractResponse>> {
   try {
+    const limited = rateLimit(request, "research-extract", {
+      windowMs: 60_000,
+      maxRequests: 20,
+    });
+    if (limited) return limited as NextResponse<ExtractResponse>;
+
     const body = await request.json();
     const validation = extractSchema.safeParse(body);
 

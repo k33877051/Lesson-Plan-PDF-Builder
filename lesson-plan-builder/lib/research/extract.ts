@@ -1,8 +1,7 @@
 // Content Extraction Module
-// Extracts and cleans content from URLs
-
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
+import { assertSafeFetchUrl, UrlGuardError } from '@/lib/url-guard';
 
 export interface ExtractedContent {
   title: string;
@@ -42,6 +41,21 @@ export function isExtractableUrl(url: string): boolean {
 
 // Fetch and extract content from a URL
 export async function extractContent(url: string): Promise<ExtractedContent> {
+  try {
+    assertSafeFetchUrl(url);
+  } catch (error) {
+    const message = error instanceof UrlGuardError ? error.message : 'URL not allowed';
+    return {
+      title: '',
+      content: '',
+      wordCount: 0,
+      readingTime: 0,
+      images: [],
+      videos: [],
+      error: message,
+    };
+  }
+
   if (!isExtractableUrl(url)) {
     return {
       title: '',

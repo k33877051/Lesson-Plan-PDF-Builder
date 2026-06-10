@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { rateLimit } from '@/lib/rate-limit';
 
 const querySchema = z.object({
   jobId: z.string().min(1),
@@ -43,6 +44,12 @@ export async function GET(
   request: NextRequest
 ): Promise<NextResponse<ResearchStatusResponse>> {
   try {
+    const limited = rateLimit(request, "research-status", {
+      windowMs: 60_000,
+      maxRequests: 60,
+    });
+    if (limited) return limited as NextResponse<ResearchStatusResponse>;
+
     const { searchParams } = new URL(request.url);
     const jobId = searchParams.get('jobId');
 

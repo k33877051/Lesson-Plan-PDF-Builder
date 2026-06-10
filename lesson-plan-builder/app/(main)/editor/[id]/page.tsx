@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { LessonPlanForm, LessonPlanData } from "@/components/editor/LessonPlanForm";
 import { ChevronLeft, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ResponsiveContainer } from "@/components/layout/responsive-container";
 import { JSONContent } from "@tiptap/react";
 
 // Type for API response
@@ -156,11 +157,33 @@ export default function LessonPlanEditorPage() {
     router.push(`/preview/${lessonPlanId}`);
   }, [isNew, lessonPlanId, router]);
 
-  // ส่งออก (ยังไม่ implement)
-  const handleExport = useCallback(() => {
-    // TODO: Implement export
-    console.log("Export not implemented yet");
-  }, []);
+  // ส่งออก PDF ผ่าน API
+  const handleExport = useCallback(async () => {
+    if (isNew) {
+      alert("กรุณาบันทึกแผนการสอนก่อน จึงจะสามารถส่งออก PDF ได้");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/export-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonPlanId }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "เกิดข้อผิดพลาดในการสร้าง PDF");
+      }
+
+      if (data.downloadUrl) {
+        window.open(data.downloadUrl, "_blank");
+      }
+      setSuccessMessage("ส่งออก PDF สำเร็จ");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการส่งออก PDF");
+    }
+  }, [isNew, lessonPlanId]);
 
   if (isLoading) {
     return (
@@ -175,7 +198,7 @@ export default function LessonPlanEditorPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-4xl py-8 px-4">
+    <ResponsiveContainer size="narrow" className="py-6 md:py-8">
       {/* Back Button */}
       <div className="mb-6">
         <Button variant="outline" size="sm" asChild>
@@ -210,6 +233,6 @@ export default function LessonPlanEditorPage() {
         isSaving={isSaving}
         isNew={isNew}
       />
-    </div>
+    </ResponsiveContainer>
   );
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { access, mkdir } from "fs/promises";
 import { join } from "path";
 import { checkDatabaseConnection } from "@/lib/prisma";
+import { getEncryptionStatus } from "@/lib/encryption";
 
 export async function GET() {
   const uploadsDir = join(process.cwd(), "public", "uploads");
@@ -21,6 +22,7 @@ export async function GET() {
     })
   );
 
+  const encryption = getEncryptionStatus();
   const healthy = database && storage.every(Boolean);
 
   return NextResponse.json(
@@ -30,6 +32,11 @@ export async function GET() {
         database,
         uploadsDir: storage[0],
         exportsDir: storage[1],
+        encryption: {
+          configured: encryption.configured,
+          source: encryption.source,
+          warning: encryption.warning ?? null,
+        },
       },
     },
     { status: healthy ? 200 : 503 }

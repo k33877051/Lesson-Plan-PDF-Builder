@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { rateLimit } from '@/lib/rate-limit';
 import { runResearchJob, ResearchJobConfig } from '@/lib/research/research-agent';
 
 // Request validation schema
@@ -43,6 +44,12 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<CreateResearchJobResponse>> {
   try {
+    const limited = rateLimit(request, "research-jobs-create", {
+      windowMs: 60_000,
+      maxRequests: 10,
+    });
+    if (limited) return limited as NextResponse<CreateResearchJobResponse>;
+
     // Parse request body
     const body = await request.json();
 
@@ -185,6 +192,12 @@ export async function GET(
   request: NextRequest
 ): Promise<NextResponse<GetResearchJobResponse>> {
   try {
+    const limited = rateLimit(request, "research-jobs-read", {
+      windowMs: 60_000,
+      maxRequests: 60,
+    });
+    if (limited) return limited as NextResponse<GetResearchJobResponse>;
+
     const { searchParams } = new URL(request.url);
     const jobId = searchParams.get('jobId');
 

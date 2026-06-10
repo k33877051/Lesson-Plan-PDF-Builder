@@ -23,6 +23,11 @@
 8. Client calls `POST /api/extract-pdf`.
 9. System reads the PDF, tries text-layer extraction, falls back to OCR when needed, and updates `PdfSource`.
 10. User previews extracted text or sees a clear failure message.
+11. User clicks **สร้างแผนด้วย AI** → `/dashboard/lesson-builder?projectId=...`.
+12. User fills subject/grade and either:
+    - clicks **สร้างจาก PDF โดยตรง** (`POST /api/generate-lesson` with `projectId`), or
+    - runs research flow then generates with PDF + selected sources.
+13. User edits in Lesson Builder, saves via `PUT /api/lesson-plans/[id]`, and can open full editor at `/editor/{id}`.
 
 ## AI Research Flow
 1. User opens `/dashboard/lesson-builder` or the research tab in the editor.

@@ -3,6 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { sanitizeRichText } from "@/lib/sanitize-html";
 import { rateLimit } from "@/lib/rate-limit";
+import { writeAuditLog } from "@/lib/audit-log";
+import { invalidateDashboardStatsCache } from "@/lib/dashboard-stats-cache";
 
 const allowedStatuses = ["draft", "published", "archived", "completed"] as const;
 
@@ -171,6 +173,10 @@ export async function PUT(
       },
     });
 
+    if (status !== undefined) {
+      invalidateDashboardStatsCache();
+    }
+
     return NextResponse.json({
       success: true,
       message: "อัปเดตแผนการสอนสำเร็จ",
@@ -217,6 +223,15 @@ export async function DELETE(
     await prisma.lessonPlan.delete({
       where: { id },
     });
+
+    await writeAuditLog(request, {
+      action: "delete",
+      resourceType: "lesson_plan",
+      resourceId: id,
+      metadata: { lessonTitle: existing.lessonTitle },
+    });
+
+    invalidateDashboardStatsCache();
 
     return NextResponse.json({
       success: true,

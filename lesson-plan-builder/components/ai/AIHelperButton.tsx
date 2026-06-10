@@ -71,6 +71,12 @@ interface GenerateResponse {
   };
   citations?: string[];
   researchUsed?: boolean;
+  meta?: {
+    provider?: string;
+    providerName?: string;
+    model?: string;
+    fallbackUsed?: boolean;
+  };
   error?: string;
 }
 
@@ -134,6 +140,7 @@ export function AIHelperButton({
 }: AIHelperButtonProps) {
   const [status, setStatus] = useState<GenerateStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [providerInfo, setProviderInfo] = useState<string>("");
   const [showDialog, setShowDialog] = useState(false);
 
   // Form state
@@ -205,6 +212,14 @@ export function AIHelperButton({
           assessment: data.data.assessment,
           mediaResources: data.data.mediaResources,
         });
+        if (data.meta?.providerName) {
+          const fallbackNote = data.meta.fallbackUsed ? " (สำรอง)" : "";
+          setProviderInfo(
+            `ใช้ ${data.meta.providerName}${fallbackNote}${data.meta.model ? ` · ${data.meta.model}` : ""}`
+          );
+        } else {
+          setProviderInfo("");
+        }
         setStatus("success");
       }
     } catch (error) {
@@ -384,6 +399,9 @@ export function AIHelperButton({
                 <AlertDescription className="text-green-700">
                   AI ได้สร้างเนื้อหาแผนการสอนครบถ้วนแล้ว
                   {useResearchSources && " (โดยใช้ข้อมูลจากการค้นคว้า)"}:
+                  {providerInfo && (
+                    <p className="mt-1 text-xs text-green-600">{providerInfo}</p>
+                  )}
                   <ul className="mt-2 ml-4 list-disc text-sm">
                     <li>วัตถุประสงค์การเรียนรู้</li>
                     <li>สาระสำคัญ/แนวคิดหลัก</li>

@@ -4,6 +4,13 @@ import { extractTextFromPdf, summarizeText } from "@/lib/services/pdf-extraction
 import { ExtractionStatus } from "@/lib/generated/prisma/client";
 import { rateLimit } from "@/lib/rate-limit";
 
+/** ถ้า PROCESSING ค้างเกินนี้ อนุญาตให้ดึงใหม่ได้ */
+const STALE_PROCESSING_MS = 5 * 60 * 1000;
+
+function isStaleProcessing(updatedAt: Date): boolean {
+  return Date.now() - updatedAt.getTime() > STALE_PROCESSING_MS;
+}
+
 /**
  * POST /api/extract-pdf
  * ดึงข้อความจาก PDF และบันทึกลงฐานข้อมูล
@@ -42,9 +49,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (pdfSource.extractionStatus === ExtractionStatus.PROCESSING) {
-      return NextResponse.json(
-        { error: "ไฟล์นี้กำลังประมวลผลอยู่ กรุณารอสักครู่" },
-        { status: 409 }
+      if (!isStaleProcessing(pdfSource.updatedAt)) {
+        return NextResponse.json(
+          { error: "ไฟล์นี้กำลังประมวลผลอยู่ กรุณารอสักครู่" },
+          { status: 409 }
+        );
+      }
+      console.warn(
+        `[extract-pdf] รีเซ็ตสถานะ PROCESSING ที่ค้างสำหรับ pdfSource ${pdfSourceId}`
       );
     }
 

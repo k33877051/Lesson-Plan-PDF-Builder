@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/github/client";
 import { encrypt } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
+import { writeAuditLog } from "@/lib/audit-log";
 
 const authSchema = z.object({
   token: z.string().min(1, "GitHub token is required"),
@@ -73,6 +74,12 @@ export async function POST(request: NextRequest) {
         appSettingId: appSetting.id,
         isActive: true,
       },
+    });
+
+    await writeAuditLog(request, {
+      action: "github_auth",
+      resourceType: "github",
+      metadata: { username: verification.username },
     });
 
     return NextResponse.json({

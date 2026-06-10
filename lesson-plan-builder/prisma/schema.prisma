@@ -46,6 +46,9 @@ model PdfSource {
   project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+
+  @@index([projectId])
+  @@index([extractionStatus])
 }
 
 // User model for AI Research features
@@ -181,6 +184,9 @@ model ResearchSource {
   chunks            SourceChunk[]
   lessonPlans       LessonPlanSource[]
   createdAt         DateTime           @default(now())
+
+  @@index([researchJobId])
+  @@index([createdAt])
 }
 
 // Content chunks for RAG
@@ -286,4 +292,111 @@ model GitHubRepo {
   
   @@index([integrationId])
   @@index([projectId])
+}
+
+// ==========================================
+// AI Settings Center Models (Phase 1-5)
+// ==========================================
+
+// AI Provider configuration (OpenAI, KIMI, Gemini, etc.)
+model AiProvider {
+  id          String   @id @default(cuid())
+  key         String   @unique // openai, kimi, gemini, anthropic, etc.
+  name        String   // Display name: OpenAI, KIMI AI, Google Gemini
+  type        String   // openai-compatible, gemini-native, anthropic-native
+  baseUrl     String?  // Custom endpoint URL (optional)
+  apiKeyEnc   String?  @db.Text // Encrypted API key
+  model       String   // Default model identifier
+  settings    Json?    // Provider-specific settings JSON
+  isEnabled   Boolean  @default(true)
+  isDefault   Boolean  @default(false) // Primary provider
+  priority    Int      @default(0) // Priority for fallback ordering
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  functions   AiFunctionProvider[]
+  
+  @@index([isEnabled])
+  @@index([isDefault])
+}
+
+// AI Functions registry - tracks all AI capabilities in the system
+model AiFunction {
+  id          String   @id @default(cuid())
+  key         String   @unique // ai_helper, generate_lesson, research_automation, etc.
+  name        String   // Display name: AI Helper, Generate Lesson, etc.
+  description String?  @db.Text // Function description
+  category    String   // content_generation, research, analysis, extraction
+  settings    Json?    // Function-specific default settings
+  isEnabled   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  providers   AiFunctionProvider[]
+  
+  @@index([category])
+  @@index([isEnabled])
+}
+
+// Many-to-many junction: AiFunction <-> AiProvider with config
+model AiFunctionProvider {
+  id          String   @id @default(cuid())
+  functionId  String
+  providerId  String
+  priority    Int      @default(0) // Priority for this provider on this function
+  config      Json?    // Function-specific config for this provider (temperature, maxTokens, etc.)
+  isEnabled   Boolean  @default(true)
+  
+  // Relations
+  function    AiFunction @relation(fields: [functionId], references: [id], onDelete: Cascade)
+  provider    AiProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  
+  @@unique([functionId, providerId])
+  @@index([functionId])
+  @@index([providerId])
+  @@index([isEnabled])
+}
+
+// ==========================================
+// Object Registry System (Phase 5)
+// ==========================================
+
+// System-wide object registry for tracking all project components
+model SystemObjectRegistry {
+  id          String   @id @default(cuid())
+  objectKey   String   @unique // Unique identifier: route/api-ai-generate, component/sidebar, model/lessonplan
+  objectName  String   // Human-readable name
+  objectType  String   // api_route, prisma_model, react_component, service, feature, utility
+  module      String   // dashboard, ai, pdf, research, github, system, layout
+  description String?  @db.Text // Detailed description
+  metadata    Json?    // Flexible metadata: { filePath, dependencies, props, methods, lineCount }
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([objectType])
+  @@index([module])
+  @@index([isActive])
+  @@index([objectType, module])
+}
+
+// ==========================================
+// Audit Log (Phase 12)
+// ==========================================
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  action       String
+  resourceType String
+  resourceId   String?
+  metadata     Json?
+  ipAddress    String?
+  userAgent    String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+  @@index([resourceType])
 }

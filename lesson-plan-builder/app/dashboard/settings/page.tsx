@@ -29,9 +29,19 @@ import {
   Printer,
   Languages,
   GitFork,
+  Bot,
+  Database,
+  Cpu,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { GitHubConnect } from "@/components/github/GitHubConnect";
+import { AIProvidersSettings } from "@/components/ai/AIProvidersSettings";
+import { GeminiSettingsPanel } from "@/components/ai/GeminiSettingsPanel";
+import { AIFunctionsSettings } from "@/components/ai/AIFunctionsSettings";
+import { ObjectRegistryPanel } from "@/components/system/ObjectRegistryPanel";
+import { PageHeader } from "@/components/layout/page-header";
+import { ResponsiveContainer } from "@/components/layout/responsive-container";
+import { setAppTheme } from "@/components/layout/theme-sync";
 
 interface SettingsResponse {
   success: boolean;
@@ -120,6 +130,7 @@ export default function SettingsPage() {
           fontSize: data.fontSize,
           language: data.language,
         });
+        setAppTheme(data.theme as "light" | "dark" | "system");
         setNotifications({
           emailAlerts: data.emailAlerts,
           exportComplete: data.exportComplete,
@@ -164,6 +175,8 @@ export default function SettingsPage() {
         throw new Error(result.error || "ไม่สามารถบันทึกการตั้งค่าได้");
       }
 
+      setAppTheme(appearance.theme as "light" | "dark" | "system");
+
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
@@ -174,14 +187,11 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">ตั้งค่า</h1>
-        <p className="text-muted-foreground">
-          จัดการการตั้งค่าบัญชีและการใช้งานแอปพลิเคชัน
-        </p>
-      </div>
+    <ResponsiveContainer className="space-y-6">
+      <PageHeader
+        title="ตั้งค่า"
+        description="จัดการการตั้งค่าบัญชีและการใช้งานแอปพลิเคชัน"
+      />
 
       {error && (
         <Alert variant="destructive">
@@ -199,7 +209,7 @@ export default function SettingsPage() {
       )}
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-[750px]">
+        <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto md:grid md:grid-cols-4 lg:grid-cols-8 lg:w-auto">
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">โปรไฟล์</span>
@@ -210,11 +220,23 @@ export default function SettingsPage() {
           </TabsTrigger>
           <TabsTrigger value="notifications" className="gap-2">
             <Bell className="h-4 w-4" />
-            <span className="hidden sm:inline">การแจ้งเตือน</span>
+            <span className="hidden sm:inline">แจ้งเตือน</span>
           </TabsTrigger>
           <TabsTrigger value="pdf" className="gap-2">
             <FileText className="h-4 w-4" />
             <span className="hidden sm:inline">PDF</span>
+          </TabsTrigger>
+          <TabsTrigger value="ai-providers" className="gap-2">
+            <Cpu className="h-4 w-4" />
+            <span className="hidden sm:inline">AI Providers</span>
+          </TabsTrigger>
+          <TabsTrigger value="ai-functions" className="gap-2">
+            <Bot className="h-4 w-4" />
+            <span className="hidden sm:inline">AI Functions</span>
+          </TabsTrigger>
+          <TabsTrigger value="registry" className="gap-2">
+            <Database className="h-4 w-4" />
+            <span className="hidden sm:inline">Registry</span>
           </TabsTrigger>
           <TabsTrigger value="github" className="gap-2">
             <GitFork className="h-4 w-4" />
@@ -319,7 +341,10 @@ export default function SettingsPage() {
                 <Label>ธีม</Label>
                 <Select
                   value={appearance.theme}
-                  onValueChange={(value) => setAppearance({ ...appearance, theme: value })}
+                  onValueChange={(value) => {
+                    setAppearance({ ...appearance, theme: value });
+                    setAppTheme(value as "light" | "dark" | "system");
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -547,6 +572,22 @@ export default function SettingsPage() {
         <TabsContent value="github" className="space-y-6">
           <GitHubConnect />
         </TabsContent>
+
+        {/* AI Providers Tab */}
+        <TabsContent value="ai-providers" className="space-y-6">
+          <AIProvidersSettings />
+          <GeminiSettingsPanel />
+        </TabsContent>
+
+        {/* AI Functions Tab */}
+        <TabsContent value="ai-functions" className="space-y-6">
+          <AIFunctionsSettings />
+        </TabsContent>
+
+        {/* Object Registry Tab */}
+        <TabsContent value="registry" className="space-y-6">
+          <ObjectRegistryPanel />
+        </TabsContent>
       </Tabs>
 
       {/* Save Button */}
@@ -577,6 +618,6 @@ export default function SettingsPage() {
           )}
         </Button>
       </div>
-    </div>
+    </ResponsiveContainer>
   );
 }

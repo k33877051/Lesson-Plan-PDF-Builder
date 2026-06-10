@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/layout/page-header";
+import { ResponsiveContainer } from "@/components/layout/responsive-container";
 import {
   Select,
   SelectContent,
@@ -30,6 +32,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { prisma } from "@/lib/prisma";
 import { DeleteLessonPlanButton } from "@/components/dashboard/DeleteLessonPlanButton";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "แผนการสอนของฉัน - Lesson Plan PDF Builder",
@@ -103,22 +107,19 @@ export default async function LessonPlansPage() {
   });
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">แผนการสอนของฉัน</h1>
-          <p className="text-muted-foreground">
-            จัดการแผนการสอนทั้งหมดของคุณ
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/dashboard/lesson-plans/new">
-            <Plus className="mr-2 h-4 w-4" />
-            สร้างแผนการสอนใหม่
-          </Link>
-        </Button>
-      </div>
+    <ResponsiveContainer className="space-y-6">
+      <PageHeader
+        title="แผนการสอนของฉัน"
+        description="จัดการแผนการสอนทั้งหมดของคุณ"
+        actions={
+          <Button asChild className="w-full sm:w-auto">
+            <Link href="/dashboard/lesson-plans/new">
+              <Plus className="mr-2 h-4 w-4" />
+              สร้างแผนการสอนใหม่
+            </Link>
+          </Button>
+        }
+      />
 
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -255,6 +256,6 @@ export default async function LessonPlansPage() {
           );
         })}
       </div>
-    </div>
+    </ResponsiveContainer>
   );
 }

@@ -16,6 +16,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 type ExtractionStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
 
+/** ถ้า PROCESSING ค้างเกิน 5 นาที อนุญาตให้กดดึงใหม่ */
+const STALE_PROCESSING_MS = 5 * 60 * 1000;
+
 interface PdfExtractionButtonProps {
   pdfSourceId: string;
   originalName: string;
@@ -23,6 +26,7 @@ interface PdfExtractionButtonProps {
   extractedText: string | null;
   pageCount: number | null;
   extractionError: string | null;
+  updatedAt: string;
 }
 
 interface ExtractionResult {
@@ -62,11 +66,17 @@ export function PdfExtractionButton({
   extractedText,
   pageCount,
   extractionError,
+  updatedAt,
 }: PdfExtractionButtonProps) {
   const [isExtracting, setIsExtracting] = useState(false);
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const hasReadableText = Boolean(extractedText && isReadableText(extractedText));
+  const isStaleProcessing =
+    extractionStatus === "PROCESSING" &&
+    Date.now() - new Date(updatedAt).getTime() > STALE_PROCESSING_MS;
+  const isActivelyProcessing =
+    extractionStatus === "PROCESSING" && !isStaleProcessing;
 
   const handleExtract = async () => {
     setIsExtracting(true);
@@ -108,9 +118,13 @@ export function PdfExtractionButton({
         );
       case "PROCESSING":
         return (
-          <Badge variant="secondary">
-            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-            กำลังประมวลผล
+          <Badge variant={isStaleProcessing ? "destructive" : "secondary"}>
+            {isStaleProcessing ? (
+              <AlertCircle className="h-3 w-3 mr-1" />
+            ) : (
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            )}
+            {isStaleProcessing ? "ประมวลผลค้าง" : "กำลังประมวลผล"}
           </Badge>
         );
       case "FAILED":
@@ -161,7 +175,7 @@ export function PdfExtractionButton({
           variant="outline"
           size="sm"
           onClick={handleExtract}
-          disabled={isExtracting || extractionStatus === "PROCESSING"}
+          disabled={isExtracting || isActivelyProcessing}
         >
           {isExtracting ? (
             <>
@@ -171,7 +185,9 @@ export function PdfExtractionButton({
           ) : (
             <>
               <FileSearch className="h-4 w-4 mr-2" />
-              {extractionStatus === "FAILED" || (extractionStatus === "COMPLETED" && !hasReadableText)
+              {extractionStatus === "FAILED" ||
+              isStaleProcessing ||
+              (extractionStatus === "COMPLETED" && !hasReadableText)
                 ? "ดึงใหม่"
                 : "ดึงข้อความ"}
             </>

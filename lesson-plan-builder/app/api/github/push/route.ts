@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { initializeAndPush } from "@/lib/github/client";
 import { decrypt } from "@/lib/crypto";
 import { rateLimit } from "@/lib/rate-limit";
+import { writeAuditLog } from "@/lib/audit-log";
 
 const pushSchema = z.object({
   repoId: z.string(),
@@ -108,6 +109,13 @@ export async function POST(request: NextRequest) {
     await prisma.gitHubIntegration.update({
       where: { id: appSetting.githubIntegration.id },
       data: { lastSyncedAt: new Date() },
+    });
+
+    await writeAuditLog(request, {
+      action: "github_push",
+      resourceType: "github",
+      resourceId: repoId,
+      metadata: { branch, commitMessage, repoUrl: repo.url },
     });
 
     return NextResponse.json({

@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateObject } from "ai";
 import { z } from "zod";
 import { escapeHtml, sanitizeRichText } from "@/lib/sanitize-html";
 import { rateLimit } from "@/lib/rate-limit";
+import { writeAuditLog } from "@/lib/audit-log";
 import { prisma } from "@/lib/prisma";
 import { formatChunksForContext } from "@/lib/research/chunk";
 import {
   getAIProviderLabel,
-  getLessonPlanAIModel,
-  getMissingAIConfigKey,
+  generateObjectWithProviderFallback,
+  normalizeLessonPlanAiJson,
+  getAIStatus,
 } from "@/lib/ai/provider";
 
 // Input validation schema
@@ -98,12 +99,10 @@ export async function POST(request: NextRequest) {
     });
     if (limited) return limited;
 
-    const missingConfigKey = getMissingAIConfigKey();
-
-    // Check for API key
-    if (missingConfigKey) {
+    const aiStatus = await getAIStatus();
+    if (!aiStatus.configured) {
       return NextResponse.json(
-        { success: false, error: `ไม่พบ ${missingConfigKey} กรุณาตั้งค่า environment variable` },
+        { success: false, error: "ยังไม่มี AI Provider ที่พร้อมใช้งาน กรุณาตั้งค่าใน Settings" },
         { status: 500 }
       );
     }
@@ -171,13 +170,15 @@ ${context ? `บริบทเพิ่มเติม: ${context}` : ""}${rese
 6. สื่อและแหล่งเรียนรู้ที่แนะนำ (3-5 รายการ)
 ${researchCitations.length > 0 ? `\nอ้างอิง:\n${researchCitations.join("\n")}` : ""}`;
 
-    // Generate content using AI SDK with structured output
-    const { object } = await generateObject({
-      model: getLessonPlanAIModel(),
+    // Generate content using AI SDK with structured output + provider fallback
+    const { object, provider, fallbackUsed, modelUsed } =
+      await generateObjectWithProviderFallback({
+      functionKey: "ai_helper",
       schema: lessonPlanContentSchema,
       system: systemPrompt,
       prompt: userPrompt,
       temperature: 0.7,
+      normalizeParsedJson: normalizeLessonPlanAiJson,
     });
 
     // Convert arrays to HTML format for Tiptap editor
@@ -236,11 +237,23 @@ ${researchCitations.length > 0 ? `\nอ้างอิง:\n${researchCitations.
       raw: object,
     };
 
+    await writeAuditLog(request, {
+      action: "ai_generate",
+      resourceType: "lesson_plan",
+      metadata: { type: "ai_generate", lessonTitle, subject, grade },
+    });
+
     return NextResponse.json({
       success: true,
       data: formattedContent,
       citations: researchCitations.length > 0 ? researchCitations : undefined,
       researchUsed: researchCitations.length > 0,
+      meta: {
+        provider: provider.key,
+        providerName: provider.name,
+        model: modelUsed,
+        fallbackUsed,
+      },
     });
 
   } catch (error) {
@@ -275,12 +288,26 @@ ${researchCitations.length > 0 ? `\nอ้างอิง:\n${researchCitations.
           { status: 403 }
         );
       }
+      if (error.message.includes("ทุก AI Provider ล้มเหลว")) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "ทุก AI Provider ล้มเหลว กรุณาตรวจสอบ OpenAI quota, เปิดใช้ Gemini ใน Settings หรือตั้งค่า Ollama model อื่น",
+            details: error.message,
+          },
+          { status: 503 }
+        );
+      }
     }
 
     return NextResponse.json(
-      { 
-        success: false, 
-        error: "เกิดข้อผิดพลาดในการสร้างเนื้อหา กรุณาลองใหม่" 
+      {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "เกิดข้อผิดพลาดในการสร้างเนื้อหา กรุณาลองใหม่",
       },
       { status: 500 }
     );

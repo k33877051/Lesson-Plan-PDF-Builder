@@ -43,6 +43,8 @@ import {
   searchSamples,
   AILessonPlanSample,
 } from "@/src/data/sample-ai-lesson-plans";
+import { ResponsiveContainer } from "@/components/layout/responsive-container";
+import { PageHeader } from "@/components/layout/page-header";
 import {
   AlertCircle,
   ChevronLeft,
@@ -241,20 +243,18 @@ export default function NewLessonPlanPage() {
   const selectedSample = sampleAILessonPlans.find((s) => s.id === selectedSampleId);
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" asChild>
+    <ResponsiveContainer className="space-y-6 py-2 md:py-0">
+      <div className="flex items-start gap-3">
+        <Button variant="outline" size="icon" asChild className="shrink-0">
           <Link href="/dashboard/lesson-plans">
             <ChevronLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">สร้างแผนการสอนใหม่</h1>
-          <p className="text-muted-foreground">
-            สร้างด้วยตนเองหรือเลือกจากตัวอย่างแผนการสอน AI
-          </p>
-        </div>
+        <PageHeader
+          title="สร้างแผนการสอนใหม่"
+          description="สร้างด้วยตนเองหรือเลือกจากตัวอย่างแผนการสอน AI"
+          className="flex-1"
+        />
       </div>
 
       {error && (
@@ -693,15 +693,15 @@ export default function NewLessonPlanPage() {
       </Card>
 
       {/* Actions */}
-      <div className="flex justify-end gap-3">
-        <Button variant="outline" onClick={handleClear}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+        <Button variant="outline" onClick={handleClear} className="w-full sm:w-auto">
           <RotateCcw className="h-4 w-4 mr-2" />
           ล้างข้อมูล
         </Button>
-        <Button variant="outline" asChild>
+        <Button variant="outline" asChild className="w-full sm:w-auto">
           <Link href="/dashboard/lesson-plans">ยกเลิก</Link>
         </Button>
-        <Button onClick={handleCreate} disabled={!isValid || isCreating}>
+        <Button onClick={handleCreate} disabled={!isValid || isCreating} className="w-full sm:w-auto">
           {isCreating ? (
             <>
               <span className="animate-spin mr-2">⏳</span>
@@ -715,6 +715,6 @@ export default function NewLessonPlanPage() {
           )}
         </Button>
       </div>
-    </div>
+    </ResponsiveContainer>
   );
 }

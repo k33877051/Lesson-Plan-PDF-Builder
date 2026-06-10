@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rate-limit";
 
 const SETTINGS_ID = "default";
 
@@ -28,8 +29,14 @@ function normalizeEmail(email: string | null | undefined) {
   return email === "" ? null : email;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const limited = rateLimit(request, "legacy-settings-read", {
+      windowMs: 60_000,
+      maxRequests: 60,
+    });
+    if (limited) return limited;
+
     const settings = await prisma.appSetting.upsert({
       where: { id: SETTINGS_ID },
       update: {},
@@ -48,6 +55,12 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
+    const limited = rateLimit(request, "legacy-settings-write", {
+      windowMs: 60_000,
+      maxRequests: 30,
+    });
+    if (limited) return limited;
+
     const body = await request.json();
     const validation = settingsSchema.safeParse(body);
 

@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { rateLimit } from '@/lib/rate-limit';
 import { generateSearchQueries, performSearch } from '@/lib/research/search';
 
 // Research status enum values
@@ -34,6 +35,12 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<StartResearchResponse>> {
   try {
+    const limited = rateLimit(request, "research-start", {
+      windowMs: 60_000,
+      maxRequests: 15,
+    });
+    if (limited) return limited as NextResponse<StartResearchResponse>;
+
     const body = await request.json();
     const validation = startResearchSchema.safeParse(body);
 

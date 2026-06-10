@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, FileText } from "lucide-react";
 
 export interface LessonPlanFormData {
   topic: string;
@@ -27,6 +27,9 @@ interface LessonPlanFormProps {
   onSubmit: (data: LessonPlanFormData) => void;
   isLoading?: boolean;
   initialData?: Partial<LessonPlanFormData>;
+  showPdfGenerate?: boolean;
+  isPdfGenerating?: boolean;
+  onGenerateFromPdf?: (data: LessonPlanFormData) => void;
 }
 
 const subjects = [
@@ -62,7 +65,14 @@ const gradeLevels = [
   { value: "m6", label: "มัธยมศึกษาปีที่ 6" },
 ];
 
-export function LessonPlanForm({ onSubmit, isLoading = false, initialData }: LessonPlanFormProps) {
+export function LessonPlanForm({
+  onSubmit,
+  isLoading = false,
+  initialData,
+  showPdfGenerate = false,
+  isPdfGenerating = false,
+  onGenerateFromPdf,
+}: LessonPlanFormProps) {
   const [formData, setFormData] = useState<LessonPlanFormData>({
     topic: initialData?.topic || "",
     subject: initialData?.subject || "",
@@ -71,6 +81,14 @@ export function LessonPlanForm({ onSubmit, isLoading = false, initialData }: Les
     teacherName: initialData?.teacherName || "",
     schoolName: initialData?.schoolName || "",
   });
+
+  useEffect(() => {
+    if (!initialData) return;
+    setFormData((prev) => ({
+      ...prev,
+      ...initialData,
+    }));
+  }, [initialData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,7 +223,7 @@ export function LessonPlanForm({ onSubmit, isLoading = false, initialData }: Les
           <Button
             type="submit"
             className="w-full"
-            disabled={!isValid || isLoading}
+            disabled={!isValid || isLoading || isPdfGenerating}
           >
             {isLoading ? (
               <>
@@ -219,6 +237,28 @@ export function LessonPlanForm({ onSubmit, isLoading = false, initialData }: Les
               </>
             )}
           </Button>
+
+          {showPdfGenerate && onGenerateFromPdf && (
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              disabled={!isValid || isLoading || isPdfGenerating}
+              onClick={() => onGenerateFromPdf(formData)}
+            >
+              {isPdfGenerating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  กำลังสร้างจาก PDF...
+                </>
+              ) : (
+                <>
+                  <FileText className="mr-2 h-4 w-4" />
+                  สร้างจาก PDF โดยตรง (ข้ามการค้นคว้า)
+                </>
+              )}
+            </Button>
+          )}
         </form>
       </CardContent>
     </Card>

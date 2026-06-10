@@ -1,5 +1,4 @@
-import { mkdtemp, readFile, rm, stat, writeFile } from "fs/promises";
-import { tmpdir } from "os";
+import { readFile, stat } from "fs/promises";
 import { basename, join, normalize } from "path";
 
 const MAX_PARSE_SIZE = 50 * 1024 * 1024;
@@ -57,32 +56,82 @@ export function isUsableExtractedText(text: string): boolean {
   );
 }
 
-// Use pdf-parse-fork which works better in server environments
-// Or use a pure JS alternative
+function mapPdfInfo(rawInfo: Record<string, unknown>): PdfExtractionResult["info"] {
+  return {
+    Title: typeof rawInfo.Title === "string" ? rawInfo.Title : undefined,
+    Author: typeof rawInfo.Author === "string" ? rawInfo.Author : undefined,
+    Subject: typeof rawInfo.Subject === "string" ? rawInfo.Subject : undefined,
+    Keywords: typeof rawInfo.Keywords === "string" ? rawInfo.Keywords : undefined,
+    Creator: typeof rawInfo.Creator === "string" ? rawInfo.Creator : undefined,
+    Producer: typeof rawInfo.Producer === "string" ? rawInfo.Producer : undefined,
+    CreationDate: typeof rawInfo.CreationDate === "string" ? rawInfo.CreationDate : undefined,
+    ModDate: typeof rawInfo.ModDate === "string" ? rawInfo.ModDate : undefined,
+  };
+}
+
+/** แปลง error ทางเทคนิคเป็นข้อความภาษาไทยที่ผู้ใช้เข้าใจได้ */
+function toUserFacingPdfError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (
+    (message.includes("String") && message.includes("Path")) ||
+    message.includes("InvalidArg") ||
+    message.includes("CanvasElement")
+  ) {
+    return "ระบบอ่าน PDF ไม่สำเร็จ (ปัญหา engine วาดหน้า PDF) — ลองอัปโหลดไฟล์ใหม่หรือใช้ PDF ที่มี text layer";
+  }
+
+  if (message.includes("too large") || message.includes("50MB")) {
+    return "ไฟล์ PDF ใหญ่เกิน 50MB";
+  }
+
+  if (message.includes("Invalid PDF file path")) {
+    return "พาธไฟล์ PDF ไม่ถูกต้อง";
+  }
+
+  if (
+    message.includes("ไม่สามารถดึงข้อความ") ||
+    message.includes("PDF ต้องใช้ OCR")
+  ) {
+    return message;
+  }
+
+  return message || "เกิดข้อผิดพลาดในการดึงข้อความจาก PDF";
+}
+
+async function createPdfParser(buffer: Buffer) {
+  const { PDFParse } = await runtimeImport<typeof import("pdf-parse")>("pdf-parse");
+  return new PDFParse({
+    data: buffer,
+    disableFontFace: true,
+    useSystemFonts: true,
+  });
+}
+
+/** ดึงข้อความจาก text layer ด้วย pdf-parse v2 */
 async function parsePdf(buffer: Buffer): Promise<ParsedPdfResult> {
+  let parser: Awaited<ReturnType<typeof createPdfParser>> | null = null;
+
   try {
-    // Try using pdf-parse library
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require("pdf-parse");
+    parser = await createPdfParser(buffer);
+    const textResult = await parser.getText();
+    const infoResult = await parser.getInfo();
 
-    // Parse with options
-    const result = await pdfParse(buffer, {
-      max: 0, // No page limit
-    });
-
-    const text = sanitizePdfText(result.text || "");
+    const text = sanitizePdfText(textResult.text || "");
 
     if (!isUsableExtractedText(text)) {
       throw new PdfNeedsOcrError();
     }
 
+    const rawInfo = (infoResult.info ?? {}) as Record<string, unknown>;
+
     return {
       text,
-      numpages: result.numpages || 1,
-      info: result.info || {},
-      version: result.version,
-      metadata: result.metadata,
-      method: "text-layer" as ExtractionMethod,
+      numpages: textResult.total || infoResult.total || 1,
+      info: mapPdfInfo(rawInfo),
+      version: undefined,
+      metadata: infoResult.metadata ? { source: "pdf-parse-v2" } : undefined,
+      method: "text-layer",
     };
   } catch (error) {
     if (error instanceof PdfNeedsOcrError) {
@@ -91,87 +140,79 @@ async function parsePdf(buffer: Buffer): Promise<ParsedPdfResult> {
 
     console.warn("Primary PDF parser failed, falling back to OCR:", error);
     throw new PdfNeedsOcrError();
+  } finally {
+    if (parser) {
+      await parser.destroy().catch(() => undefined);
+    }
   }
 }
 
+/** OCR fallback — render หน้า PDF เป็น PNG แล้วส่งให้ Tesseract */
 async function ocrPdf(buffer: Buffer): Promise<ParsedPdfResult> {
-  const pdfjs = await runtimeImport<typeof import("pdfjs-dist/legacy/build/pdf.mjs")>(
-    "pdfjs-dist/legacy/build/pdf.mjs"
-  );
-  const { createCanvas } = await runtimeImport<typeof import("@napi-rs/canvas")>(
-    "@napi-rs/canvas"
-  );
   const { createWorker } = await runtimeImport<typeof import("tesseract.js")>(
     "tesseract.js"
   );
 
   const maxPages = Number(process.env.PDF_OCR_MAX_PAGES || DEFAULT_OCR_MAX_PAGES);
-  const loadingTask = pdfjs.getDocument({
-    data: new Uint8Array(buffer),
-    disableFontFace: true,
-    useSystemFonts: true,
-  });
-  const pdf = await loadingTask.promise;
-  const totalPages = pdf.numPages;
-  const pageLimit = Math.min(totalPages, Number.isFinite(maxPages) ? maxPages : DEFAULT_OCR_MAX_PAGES);
+  const pageLimit = Number.isFinite(maxPages) ? maxPages : DEFAULT_OCR_MAX_PAGES;
+
+  let parser: Awaited<ReturnType<typeof createPdfParser>> | null = null;
   const worker = await createWorker("tha+eng");
   const pageTexts: string[] = [];
 
   try {
+    parser = await createPdfParser(buffer);
+    const infoResult = await parser.getInfo();
+    const totalPages = infoResult.total;
+
+    const screenshotResult = await parser.getScreenshot({
+      first: pageLimit,
+      imageBuffer: true,
+      scale: OCR_SCALE,
+    });
+
     await worker.setParameters({
       preserve_interword_spaces: "1",
       user_defined_dpi: "180",
     });
 
-    for (let pageNumber = 1; pageNumber <= pageLimit; pageNumber += 1) {
-      const page = await pdf.getPage(pageNumber);
-      const viewport = page.getViewport({ scale: OCR_SCALE });
-      const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
-      const context = canvas.getContext("2d");
-
-      const renderParams = {
-        canvas,
-        canvasContext: context,
-        viewport,
-      } as unknown as Parameters<typeof page.render>[0];
-
-      await page.render(renderParams).promise;
-
-      const image = canvas.toBuffer("image/png");
-      const result = await worker.recognize(image);
+    for (const page of screenshotResult.pages) {
+      const imageBuffer = Buffer.from(page.data);
+      const result = await worker.recognize(imageBuffer);
       const text = sanitizePdfText(result.data.text || "").trim();
 
       if (text) {
-        pageTexts.push(`--- หน้า ${pageNumber} ---\n${text}`);
+        pageTexts.push(`--- หน้า ${page.pageNumber} ---\n${text}`);
       }
-
-      page.cleanup();
     }
-  } finally {
-    await worker.terminate();
-    await pdf.destroy();
-  }
 
-  const text = sanitizePdfText(pageTexts.join("\n\n"));
+    const text = sanitizePdfText(pageTexts.join("\n\n"));
+    const processedPages = screenshotResult.pages.length;
 
-  if (!isUsableExtractedText(text)) {
-    throw new Error(
-      "ไม่สามารถดึงข้อความที่อ่านได้จาก PDF นี้ได้ อาจเป็นไฟล์สแกนคุณภาพต่ำหรือมีการเข้ารหัส"
-    );
-  }
+    if (!isUsableExtractedText(text)) {
+      throw new Error(
+        "ไม่สามารถดึงข้อความที่อ่านได้จาก PDF นี้ได้ อาจเป็นไฟล์สแกนคุณภาพต่ำหรือมีการเข้ารหัส"
+      );
+    }
 
-  return {
-    text,
-    numpages: totalPages,
-    info: {},
-    version: undefined,
-    metadata: {
+    return {
+      text,
+      numpages: totalPages,
+      info: mapPdfInfo((infoResult.info ?? {}) as Record<string, unknown>),
+      version: undefined,
+      metadata: {
+        method: "ocr",
+        processedPages,
+        totalPages,
+      },
       method: "ocr",
-      processedPages: pageLimit,
-      totalPages,
-    },
-    method: "ocr" as ExtractionMethod,
-  };
+    };
+  } finally {
+    await worker.terminate().catch(() => undefined);
+    if (parser) {
+      await parser.destroy().catch(() => undefined);
+    }
+  }
 }
 
 function resolveUploadPath(filePath: string): string {
@@ -229,13 +270,11 @@ export async function extractTextFromPdf(
   filePath: string
 ): Promise<PdfExtractionResult> {
   try {
-    // อ่านไฟล์ PDF
     const pdfBuffer = await readPdfBuffer(filePath);
 
     let result: ParsedPdfResult;
 
     try {
-      // ดึงข้อความจาก text layer ก่อน ถ้าใช้ไม่ได้ค่อย OCR
       result = await parsePdf(pdfBuffer);
     } catch (error) {
       if (!(error instanceof PdfNeedsOcrError)) {
@@ -255,9 +294,7 @@ export async function extractTextFromPdf(
     };
   } catch (error) {
     console.error("PDF extraction error:", error);
-    throw new Error(
-      error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการดึงข้อความจาก PDF"
-    );
+    throw new Error(toUserFacingPdfError(error));
   }
 }
 
@@ -277,19 +314,11 @@ export async function extractTextFromPages(
     void _startPage;
     void _endPage;
     const pdfBuffer = await readPdfBuffer(filePath);
-
     const result = await parsePdf(pdfBuffer);
-
-    // pdf-parse doesn't support per-page extraction directly
-    // For page-specific extraction, we'd need pdf-lib or similar
-    // For now, return all text
-
     return sanitizePdfText(result.text);
   } catch (error) {
     console.error("PDF page extraction error:", error);
-    throw new Error(
-      error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการดึงข้อความ"
-    );
+    throw new Error(toUserFacingPdfError(error));
   }
 }
 
@@ -301,7 +330,6 @@ export async function extractTextFromPages(
 export async function hasExtractableText(filePath: string): Promise<boolean> {
   try {
     const result = await extractTextFromPdf(filePath);
-    // ถ้ามีข้อความมากกว่า 100 ตัวอักษร ถือว่ามีข้อความที่ดึงได้
     return result.text.trim().length > 100;
   } catch {
     return false;
@@ -317,7 +345,6 @@ export async function hasExtractableText(filePath: string): Promise<boolean> {
 export function summarizeText(text: string, maxLength: number = 500): string {
   if (text.length <= maxLength) return text;
 
-  // หาตำแหน่งที่เหมาะสมในการตัด (ตัดที่จุดหรือเว้นบรรทัด)
   let cutIndex = text.lastIndexOf(".", maxLength);
   if (cutIndex === -1 || cutIndex < maxLength * 0.8) {
     cutIndex = text.lastIndexOf("\n", maxLength);

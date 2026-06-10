@@ -1,9 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Printer, ChevronLeft } from "lucide-react";
-import Link from "next/link";
-import { PDFExportButton } from "@/components/pdf/PDFExportButton";
+import { PreviewToolbar } from "@/components/preview/PreviewToolbar";
 import { sanitizeRichText } from "@/lib/sanitize-html";
 
 // Import Thai fonts
@@ -130,29 +127,12 @@ export function A4Preview({
 
   return (
     <div className="preview-container">
-      {/* Toolbar - hidden when printing */}
-      <div className="preview-toolbar print:hidden">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" asChild>
-            <Link href={backHref}>
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              กลับ
-            </Link>
-          </Button>
-          <h1 className="text-lg font-semibold">ตัวอย่างก่อนพิมพ์</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <PDFExportButton
-            lessonPlanId={lessonPlan.id}
-            variant="outline"
-            size="sm"
-          />
-          <Button size="sm" onClick={handlePrint}>
-            <Printer className="h-4 w-4 mr-2" />
-            พิมพ์
-          </Button>
-        </div>
-      </div>
+      <PreviewToolbar
+        lessonPlanId={lessonPlan.id}
+        lessonTitle={lessonPlan.lessonTitle}
+        backHref={backHref}
+        onPrint={handlePrint}
+      />
 
       {/* A4 Page */}
       <div className="a4-page">

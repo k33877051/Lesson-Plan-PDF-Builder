@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
+import { ResponsiveContainer } from "@/components/layout/responsive-container";
+import { PageHeader } from "@/components/layout/page-header";
 import {
   ChevronLeft,
   Upload,
@@ -185,16 +187,14 @@ export default function NewProjectPage() {
   // Success state
   if (success) {
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" asChild>
+      <ResponsiveContainer size="narrow" className="space-y-6">
+        <div className="flex items-start gap-3">
+          <Button variant="outline" size="icon" asChild className="shrink-0">
             <Link href="/dashboard/projects">
               <ChevronLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">สร้างโปรเจกต์ใหม่</h1>
-          </div>
+          <PageHeader title="สร้างโปรเจกต์ใหม่" className="flex-1" />
         </div>
 
         <Card className="border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
@@ -235,25 +235,23 @@ export default function NewProjectPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </ResponsiveContainer>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" asChild>
+    <ResponsiveContainer size="narrow" className="space-y-6">
+      <div className="flex items-start gap-3">
+        <Button variant="outline" size="icon" asChild className="shrink-0">
           <Link href="/dashboard/projects">
             <ChevronLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">สร้างโปรเจกต์ใหม่</h1>
-          <p className="text-muted-foreground">
-            อัปโหลดไฟล์ PDF และสร้างโปรเจกต์ใหม่
-          </p>
-        </div>
+        <PageHeader
+          title="สร้างโปรเจกต์ใหม่"
+          description="อัปโหลดไฟล์ PDF และสร้างโปรเจกต์ใหม่"
+          className="flex-1"
+        />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -427,6 +425,6 @@ export default function NewProjectPage() {
           </Button>
         </div>
       </form>
-    </div>
+    </ResponsiveContainer>
   );
 }

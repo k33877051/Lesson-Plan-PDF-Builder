@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { rateLimit } from '@/lib/rate-limit';
 
 // GET - List sources
 const getQuerySchema = z.object({
@@ -37,6 +38,12 @@ export async function GET(
   request: NextRequest
 ): Promise<NextResponse<ListSourcesResponse>> {
   try {
+    const limited = rateLimit(request, "research-sources-read", {
+      windowMs: 60_000,
+      maxRequests: 60,
+    });
+    if (limited) return limited as NextResponse<ListSourcesResponse>;
+
     const { searchParams } = new URL(request.url);
     const params = {
       jobId: searchParams.get('jobId') || undefined,
@@ -162,6 +169,12 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<LinkSourceResponse>> {
   try {
+    const limited = rateLimit(request, "research-sources-write", {
+      windowMs: 60_000,
+      maxRequests: 30,
+    });
+    if (limited) return limited as NextResponse<LinkSourceResponse>;
+
     const body = await request.json();
     const validation = linkSchema.safeParse(body);
 
@@ -237,6 +250,12 @@ export async function DELETE(
   request: NextRequest
 ): Promise<NextResponse<UnlinkSourceResponse>> {
   try {
+    const limited = rateLimit(request, "research-sources-delete", {
+      windowMs: 60_000,
+      maxRequests: 30,
+    });
+    if (limited) return limited as NextResponse<UnlinkSourceResponse>;
+
     const { searchParams } = new URL(request.url);
     const params = {
       sourceId: searchParams.get('sourceId') || '',

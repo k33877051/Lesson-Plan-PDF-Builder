@@ -14,12 +14,17 @@ import {
   Edit,
   ExternalLink,
   FileSearch,
+  Sparkles,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { PdfExtractionButton } from "../components/PdfExtractionButton";
 import { ExtractionStatus } from "@/lib/generated/prisma/client";
 import { isUsableExtractedText, summarizeText } from "@/lib/services/pdf-extraction";
 import { DeleteProjectButton } from "@/components/dashboard/DeleteProjectButton";
+import { PageHeader } from "@/components/layout/page-header";
+import { ResponsiveContainer } from "@/components/layout/responsive-container";
+
+export const dynamic = "force-dynamic";
 
 // Type for PDF source
 interface PdfSource {
@@ -154,26 +159,22 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     (pdf) => pdf.extractionStatus === ExtractionStatus.PENDING
   ).length;
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" asChild>
+    <ResponsiveContainer className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <Button variant="outline" size="icon" asChild className="shrink-0">
             <Link href="/dashboard/projects">
               <ChevronLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
-              <Badge variant={status.variant}>{status.label}</Badge>
-            </div>
-            {project.description && (
-              <p className="text-muted-foreground">{project.description}</p>
-            )}
-          </div>
+          <PageHeader
+            title={project.name}
+            description={project.description ?? undefined}
+            className="flex-1"
+            actions={<Badge variant={status.variant}>{status.label}</Badge>}
+          />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
           <Button variant="outline" asChild>
             <Link href={`/dashboard/projects/${project.id}/edit`}>
               <Edit className="mr-2 h-4 w-4" />
@@ -335,6 +336,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                         extractedText={pdf.extractedText}
                         pageCount={pdf.pageCount}
                         extractionError={pdf.extractionError}
+                        updatedAt={pdf.updatedAt.toISOString()}
                       />
                     </div>
                     {pdf.extractionError && (
@@ -350,6 +352,25 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
         </CardContent>
       </Card>
 
+      {extractedPdfs > 0 && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="flex flex-col gap-4 py-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-medium">พร้อมสร้างแผนการสอนแล้ว</p>
+              <p className="text-sm text-muted-foreground">
+                ดึงข้อความจาก PDF สำเร็จ {extractedPdfs} ไฟล์ — ใช้ AI สร้างแผนจากเนื้อหาที่ได้
+              </p>
+            </div>
+            <Button asChild>
+              <Link href={`/dashboard/lesson-builder?projectId=${project.id}`}>
+                <Sparkles className="mr-2 h-4 w-4" />
+                สร้างแผนด้วย AI
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Actions */}
       <div className="flex justify-between">
         <Button variant="outline" asChild>
@@ -359,6 +380,6 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
           </Link>
         </Button>
       </div>
-    </div>
+    </ResponsiveContainer>
   );
 }

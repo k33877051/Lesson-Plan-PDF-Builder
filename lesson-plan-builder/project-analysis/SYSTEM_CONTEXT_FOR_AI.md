@@ -1,11 +1,14 @@
 # System Context For AI
 
+> **อัปเดต:** มิถุนายน 2026 — หลัง Master Upgrade  
+> ใช้เอกสารนี้เป็นบริบทหลักเมื่อแก้ไขหรือขยายระบบ
+
 This document explains the Lesson Plan PDF Builder project for another AI system that has never seen the source code.
 
 ## What The System Does
 Lesson Plan PDF Builder is a Thai-language web application for teachers and education staff. It helps users create lesson plans, upload source PDF files, extract text from those PDFs, use AI to draft lesson content, preview lesson plans in A4 format, and export final lesson plans as PDF files.
 
-The system also includes an AI research module. This module can create research jobs, generate search queries, collect or mock educational sources, score sources, chunk source content, and link selected sources to lesson plans as citations.
+The system includes an AI research module and an **AI Settings Center** where administrators configure AI providers, function-to-provider mappings, Gemini connection metadata, and a system object registry—all stored in PostgreSQL first, with `.env` as fallback.
 
 ## Why It Exists
 Teachers often need to prepare structured lesson plans from documents, curriculum material, examples, or research sources. This system reduces manual work by combining document ingestion, rich editing, sample templates, AI drafting, and PDF export in one workflow.
@@ -17,12 +20,13 @@ Teachers often need to prepare structured lesson plans from documents, curriculu
 - Help teachers generate objectives, activities, assessment, media resources, and summaries.
 - Support research-backed lesson-plan generation.
 - Export professional A4 printable PDFs.
+- Centralize AI configuration without breaking existing AI routes.
 
 ## User Types
 The system currently does not enforce login or roles, but intended users are:
 - Teacher: creates lesson plans, uploads source PDFs, edits content, exports PDFs.
 - Staff: manages projects and lesson plans for a school or department.
-- Admin: configures settings, GitHub integration, and operational preferences.
+- Admin: configures settings, AI providers/functions, object registry, GitHub integration.
 - AI system: uses structured API routes to generate content or analyze research sources.
 
 ## Important Workflows
@@ -31,75 +35,108 @@ The system currently does not enforce login or roles, but intended users are:
 User goes to `/dashboard/lesson-plans/new`, fills a Thai form or chooses an AI sample lesson plan, submits to `/api/lesson-plans`, then edits the result in `/editor/{id}`.
 
 ### Upload And Extract PDF
-User goes to `/dashboard/projects/new`, uploads a PDF, and the system creates a `Project` and `PdfSource`. On the project detail page, the user clicks extract. The API reads the PDF, tries text extraction, falls back to OCR when necessary, and saves readable text to the database.
+User goes to `/dashboard/upload` or `/dashboard/projects/new`, uploads a PDF, and the system creates a `Project` and `PdfSource`. On the project detail page, the user clicks extract. The API reads the PDF via `pdf-parse` v2 text-layer first, falls back to OCR (`getScreenshot` + Tesseract) when needed, and saves readable text to the database. Stale `PROCESSING` status (5+ minutes) can be retried automatically.
 
 ### AI Drafting
-The editor can call `/api/ai-generate` with subject, grade, lesson title, duration, optional context, and optional research context. The backend uses a Zod structured output schema through the Vercel AI SDK and returns sanitized HTML for editor sections.
+The editor calls `/api/ai-generate`. The backend resolves the model from **database AI settings first** (`lib/ai/settings-provider.ts`), tries providers in priority order via `generateObjectWithProviderFallback`, then falls back to environment variables. Returns sanitized HTML for editor sections. Only **5 pre-existing AI functions** are registered—do not add new function keys without explicit approval.
+
+### AI Settings Center
+Admin opens `/dashboard/settings` → tabs: AI Providers, AI Functions, Object Registry, Gemini.
+- Providers ที่รองรับ: **OpenAI**, **KIMI**, **Gemini**, **Anthropic Claude**, **Ollama**, **DeepSeek**, **OpenRouter** (local/cloud, `requiresApiKey: false` สำหรับ Ollama).
+- Fallback chain runtime: OpenAI → KIMI → Gemini → Anthropic → Ollama → DeepSeek → OpenRouter
+- `GET/POST /api/ai/settings` — bulk settings, auto-seed if empty; sync providers/mappings สำหรับ DB ที่มี provider อยู่แล้ว.
+- `GET/PUT /api/ai/settings/provider/[key]` — per-provider config (encrypted secrets).
+- `GET/PUT /api/ai/functions`, `/api/ai/functions/[key]` — function mappings.
+- `GET/POST/DELETE /api/ai/settings/gemini` — Gemini connection state only (no password/cookie storage).
+- `GET/POST /api/system/objects`, `/api/system/objects/sync` — registry CRUD and scanner sync.
 
 ### Research-Backed Generation
-The lesson builder creates research jobs through `/api/research-jobs` or `/api/research/start`. Sources are ranked, selected, and sent to `/api/generate-lesson`. The system generates a lesson plan and connects selected `ResearchSource` rows through `LessonPlanSource`.
+The lesson builder at `/dashboard/lesson-builder` accepts optional `?projectId=` to load extracted PDF text from a project. Users can generate directly from PDF (`sourceIds: []`, `projectId` set) or combine PDF context with ranked research sources via `POST /api/generate-lesson`. The system creates a `LessonPlan` (with `projectId` when applicable) and connects selected `ResearchSource` rows through `LessonPlanSource` when research sources are used.
 
 ### Preview And Export
-User opens `/preview/{id}`. Export calls `/api/export-pdf`, which launches Playwright, renders the preview page, saves a PDF in `public/exports`, and returns a download URL.
+User opens `/preview/{id}`. Export calls `/api/export-pdf`, which launches Playwright, renders the preview page, saves a PDF in `public/exports`, writes an audit log, invalidates dashboard stats cache, and returns a download URL.
 
 ### GitHub Integration
-The settings page allows connecting a GitHub personal access token. The token is encrypted in the database. Users can list/create repositories and push the project through Git operations.
+Settings page allows connecting a GitHub personal access token (encrypted in DB). Users can list/create repositories and push the project.
+
+### Theme
+`ThemeSync` loads theme from `localStorage` or `/api/settings`. Topbar toggle and Settings → Appearance persist theme client-side and to DB on save.
 
 ## Database Structure
-The database is PostgreSQL managed through Prisma.
+PostgreSQL managed through Prisma.
 
 Core entities:
-- `Project`: groups uploaded PDFs and optional lesson plans.
-- `PdfSource`: stores PDF metadata, file path, page count, extracted text, extraction status, and errors.
-- `LessonPlan`: stores teacher/school/subject/grade metadata and lesson-plan sections as text plus optional JSON.
+- `Project`, `PdfSource`, `LessonPlan`
 
 AI research entities:
-- `ResearchJob`: tracks topic, subject, grade level, and research status.
-- `ResearchQuery`: stores generated search queries per job.
-- `ResearchSource`: stores discovered sources, URLs, snippets, full text, scores, language, and platform.
-- `SourceChunk`: stores chunks for RAG-like use.
-- `LessonPlanSource`: joins lesson plans to sources with citation notes.
+- `ResearchJob`, `ResearchQuery`, `ResearchSource`, `SourceChunk`, `LessonPlanSource`
 
-Settings and integration entities:
-- `AppSetting`: singleton settings record.
-- `GitHubIntegration`: encrypted token and GitHub user metadata.
-- `GitHubRepo`: connected GitHub repository metadata.
-- `User`: schema-ready but not currently wired into auth.
+Settings and integration:
+- `AppSetting`, `GitHubIntegration`, `GitHubRepo`, `User` (schema-ready, no auth wired)
+
+AI Settings Center:
+- `AiProvider`, `AiFunction`, `AiFunctionProvider`, `SystemObjectRegistry`
+
+Audit:
+- `AuditLog`
 
 ## API Architecture
-All backend endpoints are Next.js App Router route handlers under `app/api`.
+Next.js App Router route handlers under `app/api`.
 
 Major API groups:
-- `/api/lesson-plans`: lesson plan CRUD.
-- `/api/projects/[id]`: project deletion.
-- `/api/upload-pdf`: PDF upload and project creation.
-- `/api/extract-pdf`: PDF text extraction and OCR.
-- `/api/export-pdf`: Playwright PDF export.
-- `/api/ai-generate`: AI helper for editor sections.
-- `/api/generate-lesson`: AI generation from selected research sources.
-- `/api/research/*`: asynchronous research pipeline.
-- `/api/research-jobs`: mock/synchronous research agent pipeline.
-- `/api/github/*`: GitHub token, repo, status, and push operations.
-- `/api/settings`: settings read/update.
-- `/api/health`: health checks.
+- `/api/lesson-plans` — CRUD with optional pagination; stats cache invalidation on write/delete.
+- `/api/projects/[id]` — project deletion.
+- `/api/upload-pdf`, `/api/extract-pdf`
+- `/api/export-pdf` — Playwright PDF export + audit.
+- `/api/ai-generate`, `/api/generate-lesson`
+- `/api/ai/*` — AI Settings Center.
+- `/api/system/objects/*` — object registry.
+- `/api/research/*`, `/api/research-jobs`
+- `/api/github/*`, `/api/settings`, `/api/health`
+
+Standard response shape (newer routes): `{ success, data, meta? }` or `{ success, error, code? }`.
+
+## Frontend Layout (Dashboard)
+- `ResponsiveShell`: sidebar (desktop), `MobileDrawer` + `MobileBottomNav` (mobile).
+- `PageHeader` + `ResponsiveContainer` on dashboard pages.
+- Editor at `/editor/[id]` uses `EditorWizard` (outside dashboard shell).
+- Preview at `/preview/[id]` uses `PreviewToolbar`.
 
 ## Security Model
-The current application has no real authentication or authorization. Security currently relies on local/development access assumptions. Some safeguards exist: input validation with Zod, Prisma query APIs, rate limiting on selected endpoints, rich-text sanitization, PDF upload validation, and GitHub token encryption. Production use requires authentication, authorization, private file storage, stronger rate limiting, and SSRF protection.
+No application authentication yet. Safeguards include:
+- Zod validation, Prisma queries, rate limiting on heavy routes.
+- Rich-text sanitization, PDF upload validation.
+- SSRF guard on research URL extract (`lib/url-guard.ts`).
+- Encrypted GitHub tokens and AI provider secrets.
+- Production seed protection header.
+- Audit logging for deletes and exports.
+
+Production still requires: auth, private file storage, distributed rate limits.
 
 ## Deployment Architecture
-The app expects a Node.js runtime, PostgreSQL, and writable local filesystem access. It uses local paths for uploads and exports. PDF export requires Playwright Chromium. OCR requires native canvas and Tesseract assets. These characteristics make deployment to simple serverless environments risky unless uploads/exports are moved to object storage and OCR/export are moved to workers or durable background jobs.
+Node.js runtime, PostgreSQL, writable local filesystem. Playwright and OCR need compatible hosting. In-memory rate limiting and stats cache are per-process.
 
 ## Known Limitations
 - No user login or roles.
 - Public local storage for uploads and exports.
-- In-memory rate limiting only.
+- In-memory rate limiting and dashboard cache only.
 - Some research routes are mock or scaffolded.
-- KIMI Coding endpoint may reject non-coding-agent use.
-- OCR may be slow and limited to configured page count.
-- Lists are not paginated.
-- Some heavy operations run inline in API routes.
-- Notification settings exist but no delivery system exists.
-- Payment features do not exist.
+- Editor/preview outside dashboard shell (no mobile bottom nav there).
+- Notification settings without delivery backend.
+- No payment features.
+
+## Constraints For AI Agents (Do Not Break)
+1. **Do not register new AI functions** — only the existing 5.
+2. **Database-first** for AI settings; `.env` is fallback only.
+3. **Gemini**: settings + UI + API only — no browser automation, no Google password/cookies/tokens.
+4. **Non-breaking changes** — preserve existing route contracts where possible.
+5. Respond and document user-facing text in **Thai**.
 
 ## Future Plans
-The most important future work is to add authentication and authorization, private storage, background processing, robust OCR, production search providers, pagination, observability, durable workflows, and eventually multi-user or multi-tenant school support.
+Authentication and authorization, private object storage, background workers, production search providers, observability, durable workflows, multi-tenant school support, optional PWA.
+
+## Related Reports
+- `project-analysis/MASTER_UPGRADE_COMPLETE.md`
+- `project-analysis/PHASE_1_5_REPORT.md`
+- `project-analysis/PHASE_11_15_REPORT.md`
+- `project-analysis/PHASE_6_10_REPORT.md`

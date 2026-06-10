@@ -3,6 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { sanitizeRichText } from "@/lib/sanitize-html";
 import { rateLimit } from "@/lib/rate-limit";
+import { buildPaginationMeta } from "@/lib/api-response";
+import { invalidateDashboardStatsCache } from "@/lib/dashboard-stats-cache";
 
 const lessonPlanCreateSchema = z.object({
   teacherName: z.string().max(120).optional().nullable(),
@@ -43,36 +45,73 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get("projectId");
     const status = searchParams.get("status");
+    const search = searchParams.get("search");
+    const pageParam = searchParams.get("page");
+    const limitParam = searchParams.get("limit");
+
+    const usePagination = pageParam !== null || limitParam !== null || search !== null;
+    const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(limitParam || "50", 10) || 50));
 
     const where: {
       projectId?: string;
       status?: string;
+      OR?: Array<Record<string, unknown>>;
     } = {};
 
     if (projectId) where.projectId = projectId;
     if (status) where.status = status;
+    if (search) {
+      where.OR = [
+        { lessonTitle: { contains: search, mode: "insensitive" } },
+        { subjectName: { contains: search, mode: "insensitive" } },
+        { teacherName: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    const select = {
+      id: true,
+      teacherName: true,
+      schoolName: true,
+      subjectName: true,
+      gradeLevel: true,
+      semester: true,
+      academicYear: true,
+      lessonTitle: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      project: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    } as const;
+
+    if (usePagination) {
+      const skip = (page - 1) * limit;
+      const [lessonPlans, total] = await Promise.all([
+        prisma.lessonPlan.findMany({
+          where,
+          select,
+          orderBy: { updatedAt: "desc" },
+          skip,
+          take: limit,
+        }),
+        prisma.lessonPlan.count({ where }),
+      ]);
+
+      return NextResponse.json({
+        success: true,
+        data: lessonPlans,
+        meta: { pagination: buildPaginationMeta(page, limit, total) },
+      });
+    }
 
     const lessonPlans = await prisma.lessonPlan.findMany({
       where,
-      select: {
-        id: true,
-        teacherName: true,
-        schoolName: true,
-        subjectName: true,
-        gradeLevel: true,
-        semester: true,
-        academicYear: true,
-        lessonTitle: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-        project: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
+      select,
       orderBy: {
         updatedAt: "desc",
       },
@@ -169,6 +208,8 @@ export async function POST(request: NextRequest) {
         status: "draft",
       },
     });
+
+    invalidateDashboardStatsCache();
 
     return NextResponse.json({
       success: true,

@@ -1,10 +1,22 @@
 import { Metadata } from "next";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { DashboardStats } from "@/components/dashboard/stats-cards";
 import { RecentProjects } from "@/components/dashboard/recent-projects";
 import { QuickActions } from "@/components/dashboard/quick-actions";
+import { PageHeader } from "@/components/layout/page-header";
+import { ResponsiveContainer } from "@/components/layout/responsive-container";
+import { Card, CardContent } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
+import {
+  getCachedDashboardStats,
+  setCachedDashboardStats,
+} from "@/lib/dashboard-stats-cache";
 import { readdir } from "fs/promises";
 import { join } from "path";
+import { FilePlus, Sparkles } from "lucide-react";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "แดชบอร์ด - Lesson Plan PDF Builder",
@@ -56,24 +68,40 @@ function formatDate(date: Date): string {
 }
 
 async function getDashboardData() {
-  const [totalLessonPlans, completedLessonPlans, draftLessonPlans, recentLessonPlans] =
-    await Promise.all([
-      prisma.lessonPlan.count(),
-      prisma.lessonPlan.count({ where: { status: { in: ["completed", "published"] } } }),
-      prisma.lessonPlan.count({ where: { status: "draft" } }),
-      prisma.lessonPlan.findMany({
-        orderBy: { updatedAt: "desc" },
-        take: 5,
-        select: {
-          id: true,
-          lessonTitle: true,
-          subjectName: true,
-          gradeLevel: true,
-          status: true,
-          updatedAt: true,
-        },
-      }),
-    ]);
+  const cachedStats = getCachedDashboardStats();
+
+  const recentLessonPlans = await prisma.lessonPlan.findMany({
+    orderBy: { updatedAt: "desc" },
+    take: 5,
+    select: {
+      id: true,
+      lessonTitle: true,
+      subjectName: true,
+      gradeLevel: true,
+      status: true,
+      updatedAt: true,
+    },
+  });
+
+  if (cachedStats) {
+    return {
+      stats: cachedStats,
+      recentLessonPlans: recentLessonPlans.map((plan) => ({
+        id: plan.id,
+        title: plan.lessonTitle,
+        subject: subjectLabels[plan.subjectName] ?? plan.subjectName,
+        grade: gradeLabels[plan.gradeLevel] ?? plan.gradeLevel,
+        status: plan.status,
+        updatedAt: formatDate(plan.updatedAt),
+      })),
+    };
+  }
+
+  const [totalLessonPlans, completedLessonPlans, draftLessonPlans] = await Promise.all([
+    prisma.lessonPlan.count(),
+    prisma.lessonPlan.count({ where: { status: { in: ["completed", "published"] } } }),
+    prisma.lessonPlan.count({ where: { status: "draft" } }),
+  ]);
 
   let exportedPdfCount = 0;
   try {
@@ -83,13 +111,17 @@ async function getDashboardData() {
     exportedPdfCount = 0;
   }
 
+  const stats = {
+    totalLessonPlans,
+    completedLessonPlans,
+    draftLessonPlans,
+    exportedPdfCount,
+  };
+
+  setCachedDashboardStats(stats);
+
   return {
-    stats: {
-      totalLessonPlans,
-      completedLessonPlans,
-      draftLessonPlans,
-      exportedPdfCount,
-    },
+    stats,
     recentLessonPlans: recentLessonPlans.map((plan) => ({
       id: plan.id,
       title: plan.lessonTitle,
@@ -105,25 +137,40 @@ export default async function DashboardPage() {
   const { stats, recentLessonPlans } = await getDashboardData();
 
   return (
-    <div className="space-y-8">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">แดชบอร์ด</h1>
-          <p className="text-muted-foreground">
-            ยินดีต้อนรับกลับมา! นี่คือภาพรวมแผนการสอนของคุณ
-          </p>
-        </div>
-      </div>
+    <ResponsiveContainer className="space-y-6 md:space-y-8">
+      <PageHeader
+        title="แดชบอร์ด"
+        description="ยินดีต้อนรับกลับมา! นี่คือภาพรวมแผนการสอนของคุณ"
+        actions={
+          <Button asChild className="w-full sm:w-auto">
+            <Link href="/dashboard/lesson-plans/new">
+              <FilePlus className="mr-2 h-4 w-4" />
+              สร้างแผนใหม่
+            </Link>
+          </Button>
+        }
+      />
 
-      {/* Stats Cards */}
+      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background">
+        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-primary">
+              <Sparkles className="h-4 w-4" />
+              <span className="text-sm font-medium">Lesson Plan PDF Builder</span>
+            </div>
+            <p className="text-base font-semibold md:text-lg">
+              สร้าง แก้ไข และส่งออกแผนการสอนได้จากทุกอุปกรณ์
+            </p>
+            <p className="text-sm text-muted-foreground">
+              มีแผน {stats.totalLessonPlans.toLocaleString("th-TH")} รายการ • PDF ส่งออกแล้ว {stats.exportedPdfCount.toLocaleString("th-TH")} ไฟล์
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       <DashboardStats {...stats} />
-
-      {/* Quick Actions */}
       <QuickActions />
-
-      {/* Recent Projects */}
       <RecentProjects lessonPlans={recentLessonPlans} />
-    </div>
+    </ResponsiveContainer>
   );
 }

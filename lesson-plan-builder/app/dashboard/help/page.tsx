@@ -2,7 +2,9 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, FolderOpen, Sparkles, Printer } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
+import { ResponsiveContainer } from "@/components/layout/responsive-container";
+import { FileText, FolderOpen, Sparkles, Printer, ArrowRight } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "ช่วยเหลือ - Lesson Plan PDF Builder",
@@ -19,7 +21,7 @@ const helpSections = [
   {
     title: "อัปโหลด PDF",
     description: "สร้างโปรเจกต์พร้อมไฟล์ PDF และบันทึก metadata ลงฐานข้อมูล",
-    href: "/dashboard/projects/new",
+    href: "/dashboard/upload",
     icon: FolderOpen,
   },
   {
@@ -38,35 +40,36 @@ const helpSections = [
 
 export default function HelpPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">ช่วยเหลือ</h1>
-        <p className="text-muted-foreground">
-          คู่มือเส้นทางการใช้งานที่เชื่อมกับข้อมูลจริงของระบบ
-        </p>
-      </div>
+    <ResponsiveContainer className="space-y-6">
+      <PageHeader
+        title="ช่วยเหลือ"
+        description="คู่มือเส้นทางการใช้งานที่เชื่อมกับข้อมูลจริงของระบบ"
+      />
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         {helpSections.map((section) => {
           const Icon = section.icon;
           return (
-            <Card key={section.href}>
+            <Card key={section.href} className="flex flex-col">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Icon className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Icon className="h-5 w-5 shrink-0" />
                   {section.title}
                 </CardTitle>
                 <CardDescription>{section.description}</CardDescription>
               </CardHeader>
-              <CardContent>
-                <Button asChild variant="outline">
-                  <Link href={section.href}>เปิดหน้านี้</Link>
+              <CardContent className="mt-auto">
+                <Button asChild variant="outline" className="w-full sm:w-auto">
+                  <Link href={section.href}>
+                    เปิดหน้านี้
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
                 </Button>
               </CardContent>
             </Card>
           );
         })}
       </div>
-    </div>
+    </ResponsiveContainer>
   );
 }
