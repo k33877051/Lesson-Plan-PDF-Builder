@@ -42,6 +42,7 @@ import { ObjectRegistryPanel } from "@/components/system/ObjectRegistryPanel";
 import { PageHeader } from "@/components/layout/page-header";
 import { ResponsiveContainer } from "@/components/layout/responsive-container";
 import { setAppTheme } from "@/components/layout/theme-sync";
+import { setAppLanguage } from "@/components/i18n/language-provider";
 
 interface SettingsResponse {
   success: boolean;
@@ -131,6 +132,9 @@ export default function SettingsPage() {
           language: data.language,
         });
         setAppTheme(data.theme as "light" | "dark" | "system");
+        if (data.language === "th" || data.language === "en") {
+          setAppLanguage(data.language);
+        }
         setNotifications({
           emailAlerts: data.emailAlerts,
           exportComplete: data.exportComplete,
@@ -366,7 +370,10 @@ export default function SettingsPage() {
                 </Label>
                 <Select
                   value={appearance.language}
-                  onValueChange={(value) => setAppearance({ ...appearance, language: value })}
+                  onValueChange={(value) => {
+                    setAppearance({ ...appearance, language: value });
+                    setAppLanguage(value as "th" | "en");
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />

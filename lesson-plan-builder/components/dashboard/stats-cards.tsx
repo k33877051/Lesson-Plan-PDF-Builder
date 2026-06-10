@@ -1,5 +1,9 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, CheckCircle, Clock, TrendingUp } from "lucide-react";
+import { useI18n } from "@/components/i18n/language-provider";
+import { formatNumberByLocale } from "@/lib/i18n";
 
 interface DashboardStatsProps {
   totalLessonPlans: number;
@@ -14,29 +18,31 @@ export function DashboardStats({
   draftLessonPlans,
   exportedPdfCount,
 }: DashboardStatsProps) {
+  const { t, locale } = useI18n();
+
   const stats = [
     {
-      title: "แผนการสอนทั้งหมด",
-      value: totalLessonPlans.toLocaleString("th-TH"),
-      description: "จำนวนแผนการสอนจากฐานข้อมูล",
+      title: t("dashboard.stats.total"),
+      value: formatNumberByLocale(totalLessonPlans, locale),
+      description: t("dashboard.stats.totalDesc"),
       icon: FileText,
     },
     {
-      title: "เสร็จสมบูรณ์",
-      value: completedLessonPlans.toLocaleString("th-TH"),
-      description: "แผนการสอนที่พร้อมใช้งาน",
+      title: t("dashboard.stats.completed"),
+      value: formatNumberByLocale(completedLessonPlans, locale),
+      description: t("dashboard.stats.completedDesc"),
       icon: CheckCircle,
     },
     {
-      title: "ฉบับร่าง",
-      value: draftLessonPlans.toLocaleString("th-TH"),
-      description: "แผนการสอนที่กำลังแก้ไข",
+      title: t("dashboard.stats.draft"),
+      value: formatNumberByLocale(draftLessonPlans, locale),
+      description: t("dashboard.stats.draftDesc"),
       icon: Clock,
     },
     {
-      title: "ไฟล์ PDF ที่ส่งออก",
-      value: exportedPdfCount.toLocaleString("th-TH"),
-      description: "นับจากไฟล์จริงในระบบ exports",
+      title: t("dashboard.stats.exported"),
+      value: formatNumberByLocale(exportedPdfCount, locale),
+      description: t("dashboard.stats.exportedDesc"),
       icon: TrendingUp,
     },
   ];

@@ -9,9 +9,11 @@ import {
   mainNavItems,
   secondaryNavItems,
 } from "@/lib/nav-config";
+import { useI18n } from "@/components/i18n/language-provider";
 import { GraduationCap, FilePlus } from "lucide-react";
 
 export function Sidebar() {
+  const { t } = useI18n();
   const CreateIcon = createNavItem.icon;
 
   return (
@@ -21,8 +23,8 @@ export function Sidebar() {
           <GraduationCap className="h-6 w-6 text-primary-foreground" />
         </div>
         <div className="flex flex-col">
-          <span className="text-sm font-semibold leading-tight">Lesson Plan</span>
-          <span className="text-xs text-muted-foreground">PDF Builder</span>
+          <span className="text-sm font-semibold leading-tight">{t("app.name")}</span>
+          <span className="text-xs text-muted-foreground">{t("app.tagline")}</span>
         </div>
       </div>
 
@@ -32,7 +34,7 @@ export function Sidebar() {
         <Button className="w-full gap-2" asChild>
           <Link href={createNavItem.href}>
             <FilePlus className="h-4 w-4" />
-            สร้างแผนการสอนใหม่
+            {t("nav.createLessonPlan")}
           </Link>
         </Button>
       </div>
@@ -48,7 +50,7 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t p-4">
-        <p className="text-center text-xs text-muted-foreground">© 2026 Lesson Plan Builder</p>
+        <p className="text-center text-xs text-muted-foreground">{t("app.copyright")}</p>
       </div>
     </aside>
   );

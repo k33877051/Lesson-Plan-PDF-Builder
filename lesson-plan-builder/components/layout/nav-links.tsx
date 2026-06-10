@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { isNavActive, type NavItem } from "@/lib/nav-config";
+import { useI18n } from "@/components/i18n/language-provider";
 
 interface NavLinksProps {
   items: NavItem[];
@@ -13,6 +14,7 @@ interface NavLinksProps {
 
 export function NavLinks({ items, onNavigate, variant = "sidebar" }: NavLinksProps) {
   const pathname = usePathname();
+  const { t } = useI18n();
 
   return (
     <>
@@ -34,7 +36,7 @@ export function NavLinks({ items, onNavigate, variant = "sidebar" }: NavLinksPro
             )}
           >
             <Icon className={cn(variant === "compact" ? "h-5 w-5" : "h-5 w-5", active && "text-primary")} />
-            <span className={cn(variant === "compact" && "leading-tight text-center")}>{item.title}</span>
+            <span className={cn(variant === "compact" && "leading-tight text-center")}>{t(item.titleKey)}</span>
           </Link>
         );
       })}

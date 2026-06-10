@@ -1,181 +1,112 @@
 # Lesson Plan PDF Builder
 
-A modern, full-stack web application for teachers to create, edit, preview, and export professional lesson plans as PDF documents.
+**Languages:** [English](./README.md) · [ภาษาไทย](./README.th.md)
+
+A full-stack web application for educators to create, edit, preview, and export professional lesson plans as PDF documents. The UI supports **Thai and English** — switch languages from the top bar (TH / EN) or in **Settings → Appearance**.
 
 ## Overview
 
-Lesson Plan PDF Builder empowers educators with an intuitive interface to craft structured lesson plans with rich content, reusable templates, and professional PDF export capabilities. The application supports importing from various formats (Word, Excel, PowerPoint) and provides a live preview of the final PDF output.
+Lesson Plan PDF Builder helps teachers build structured lesson plans with rich text, AI-assisted drafting, PDF upload/extraction, web research with citations, and GitHub sync. Export polished PDFs ready for classroom use.
 
 ## Core Features
 
-- **Dashboard**: Centralized view of all lesson plans with statistics, search, filtering, and recent activity tracking
-- **Upload & Import**: Support for importing lesson plans from Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and JSON templates
-- **Rich Text Editor**: Comprehensive editor with sections for objectives, materials, activities, assessment, and reflection
-- **Live Preview**: Real-time WYSIWYG preview of the lesson plan before export
-- **Professional PDF Export**: High-quality PDF generation with customizable formatting and styling
+- **Dashboard** — Statistics, quick actions, and recent lesson plans
+- **Lesson Plan Editor** — TipTap rich text with objectives, activities, assessment, and more
+- **AI Builder** — Generate lesson content via OpenAI, Gemini, or Ollama
+- **PDF Import & Export** — Upload PDFs, extract text, export with Playwright/Chromium
+- **Research** — AI-powered source search with credibility scoring
+- **GitHub Integration** — Push lesson plans to version-controlled repositories
+- **Bilingual UI** — Thai / English interface with persistent language preference
 
 ## Tech Stack
 
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| **Framework** | Next.js 14 (App Router) | React framework with SSR/SSG |
-| **Language** | TypeScript 5.x | Type-safe development |
-| **Styling** | Tailwind CSS 3.x | Utility-first CSS framework |
-| **UI Components** | shadcn/ui | Accessible, composable components |
-| **PDF Generation** | @react-pdf/renderer | React-based PDF generation |
-| **State Management** | Zustand | Lightweight state management |
-| **Form Handling** | React Hook Form + Zod | Type-safe forms with validation |
-| **Rich Text** | TipTap Editor | Headless rich text editor |
-| **File Handling** | Mammoth.js / XLSX / PptxGenJS | Document parsing libraries |
-| **Icons** | Lucide React | Consistent iconography |
-| **Date/Time** | date-fns | Date formatting and manipulation |
-
-## Why This Stack?
-
-### Next.js + TypeScript
-- App Router provides server components for initial data fetching
-- Type safety throughout the application reduces runtime errors
-- Built-in optimization and deployment readiness
-
-### Tailwind CSS + shadcn/ui
-- Rapid UI development with utility classes
-- Consistent design system through shadcn component library
-- Dark mode support out of the box
-- Tree-shakeable - only used styles are included
-
-### @react-pdf/renderer (PDF Generation)
-- Native React components for PDF generation
-- Server-side PDF generation capability
-- Better styling control than html2canvas-based solutions
-- TypeScript support
-
-### Zustand (State Management)
-- Simpler API than Redux, less boilerplate
-- Excellent TypeScript support
-- Small bundle size (~1KB)
-- No provider wrapper needed
-
-### TipTap Editor
-- Headless - complete control over UI
-- Extensible plugin system
-- Collaborative editing ready (via extensions)
-- Good accessibility support
+| Layer | Technology | Notes |
+|-------|------------|-------|
+| Framework | Next.js 16 (App Router) | React Server Components |
+| Language | TypeScript 5.x | Strict mode |
+| Styling | Tailwind CSS 4.x | CSS-based config |
+| UI | shadcn/ui (radix-nova) | Accessible components |
+| Database | PostgreSQL + Prisma 7 | Custom client output |
+| Rich Text | TipTap 3.x | Dual HTML + JSON storage |
+| PDF | @react-pdf/renderer + Playwright | Server-side export |
+| AI | Vercel AI SDK | OpenAI, Gemini, Ollama |
+| i18n | Custom `lib/i18n` | Thai / English messages |
 
 ## Project Structure
 
 ```
-lesson-plan-pdf-builder/
-├── app/                    # Next.js App Router pages
-├── components/             # Reusable UI components
-├── lib/                    # Utilities, hooks, and services
-├── types/                  # TypeScript type definitions
-├── hooks/                  # Custom React hooks
-├── stores/                 # Zustand state stores
-├── services/               # API and external service integrations
-└── public/                 # Static assets
+Lesson-Plan-PDF-Builder/
+├── lesson-plan-builder/     # Main Next.js application
+│   ├── app/                 # App Router pages & API routes
+│   ├── components/          # UI, editor, dashboard, i18n
+│   ├── lib/                 # Prisma, AI, i18n, services
+│   └── prisma/              # Database schema
+├── AGENTS.md                # AI agent guide
+├── ARCHITECTURE.md
+└── SCHEMA.md
 ```
-
-For complete structure, see [FOLDER_STRUCTURE.md](./FOLDER_STRUCTURE.md)
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18.x or later
-- npm 9.x or later (or pnpm/yarn)
+- Node.js 18+
+- PostgreSQL
+- npm 9+
 
 ### Installation
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd lesson-plan-pdf-builder
+git clone https://github.com/k33877051/Lesson-Plan-PDF-Builder.git
+cd Lesson-Plan-PDF-Builder/lesson-plan-builder
 
-# Install dependencies
 npm install
+cp .env.example .env   # configure DATABASE_URL, API keys
 
-# Set up environment variables
-cp .env.example .env.local
-# Edit .env.local with your configuration
-
-# Run development server
+npx prisma generate
+npx prisma migrate dev
 npm run dev
-
-# Open http://localhost:3000
 ```
 
-### Environment Variables
+Open [http://localhost:3000](http://localhost:3000)
+
+### Key Environment Variables
 
 ```env
-# Application
-NEXT_PUBLIC_APP_NAME="Lesson Plan PDF Builder"
+DATABASE_URL=postgresql://...
+OPENAI_API_KEY=...          # optional, for AI features
+GEMINI_API_KEY=...          # optional
+AI_PROVIDER=gemini          # openai | gemini | ollama
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-
-# Database (if using external storage)
-# DATABASE_URL=
-
-# File Upload (if using cloud storage)
-# UPLOAD_MAX_SIZE=10485760
-
-# Optional: Analytics
-# NEXT_PUBLIC_ANALYTICS_ID=
 ```
 
 ## Available Scripts
 
 | Script | Description |
 |--------|-------------|
-| `npm run dev` | Start development server with hot reload |
-| `npm run build` | Build for production |
-| `npm run start` | Start production server |
-| `npm run lint` | Run ESLint |
-| `npm run lint:fix` | Fix ESLint errors automatically |
-| `npm run type-check` | Run TypeScript compiler check |
-| `npm run test` | Run Jest tests |
-| `npm run test:e2e` | Run Playwright E2E tests |
-| `npm run format` | Format code with Prettier |
+| `npm run dev` | Development server |
+| `npm run build` | Production build |
+| `npm run start` | Production server |
+| `npm run lint` | ESLint |
+| `npm run setup:playwright` | Install Chromium for PDF export |
 
-## Development Workflow
+## Language / Internationalization
 
-1. **Start the dev server**: `npm run dev`
-2. **Create a feature branch**: `git checkout -b feature/your-feature`
-3. **Make changes** following the [ARCHITECTURE.md](./ARCHITECTURE.md) guidelines
-4. **Run checks**: `npm run lint && npm run type-check`
-5. **Commit changes** following conventional commits
-6. **Push and create PR**
+- Toggle **TH / EN** in the dashboard top bar
+- Or set **Settings → Appearance → Language**
+- Preference is stored in `localStorage` (`lpb-language`) and synced with the database
+- Translation files: `lesson-plan-builder/lib/i18n/messages/th.ts` and `en.ts`
 
-## Architecture & Design
+## Documentation
 
-- **Architecture**: See [ARCHITECTURE.md](./ARCHITECTURE.md)
-- **Data Models**: See [SCHEMA.md](./SCHEMA.md)
-- **Routing**: See [ROUTES.md](./ROUTES.md)
-- **Folder Structure**: See [FOLDER_STRUCTURE.md](./FOLDER_STRUCTURE.md)
-
-## Browser Support
-
-- Chrome 90+
-- Firefox 88+
-- Safari 14+
-- Edge 90+
-
-## Performance Targets
-
-- First Contentful Paint: < 1.5s
-- Time to Interactive: < 3.5s
-- Lighthouse Score: 90+ (Performance, Accessibility, Best Practices, SEO)
-
-## Contributing
-
-1. Read the architecture documentation
-2. Follow the component patterns defined in [ARCHITECTURE.md](./ARCHITECTURE.md)
-3. Ensure all new code includes TypeScript types
-4. Add tests for new features
-5. Update documentation as needed
+- [AGENTS.md](./AGENTS.md) — Developer & AI agent reference
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — System design
+- [SCHEMA.md](./SCHEMA.md) — Data models
 
 ## License
 
-MIT License - See [LICENSE](./LICENSE) for details
+MIT License
 
 ## Support
 
-For issues, feature requests, or questions, please open an issue on the repository.
+Open an issue on [GitHub](https://github.com/k33877051/Lesson-Plan-PDF-Builder/issues).

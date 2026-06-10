@@ -10,6 +10,8 @@ import {
   mainNavItems,
   secondaryNavItems,
 } from "@/lib/nav-config";
+import { useI18n } from "@/components/i18n/language-provider";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { cn } from "@/lib/utils";
 
 interface MobileDrawerProps {
@@ -18,6 +20,7 @@ interface MobileDrawerProps {
 }
 
 export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
+  const { t } = useI18n();
   const CreateIcon = createNavItem.icon;
 
   return (
@@ -43,22 +46,26 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
               <GraduationCap className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <p className="text-sm font-semibold leading-tight">Lesson Plan</p>
-              <p className="text-xs text-muted-foreground">PDF Builder</p>
+              <p className="text-sm font-semibold leading-tight">{t("app.name")}</p>
+              <p className="text-xs text-muted-foreground">{t("app.tagline")}</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="ปิดเมนู">
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label={t("nav.closeMenu")}>
             <X className="h-5 w-5" />
           </Button>
         </div>
 
         <Separator />
 
-        <div className="p-4">
+        <div className="flex items-center justify-between gap-2 p-4">
+          <LanguageSwitcher />
+        </div>
+
+        <div className="px-4 pb-4">
           <Button className="w-full gap-2" asChild onClick={onClose}>
             <Link href={createNavItem.href}>
               <CreateIcon className="h-4 w-4" />
-              สร้างแผนการสอนใหม่
+              {t("nav.createLessonPlan")}
             </Link>
           </Button>
         </div>

@@ -4,14 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { bottomNavItems, isNavActive } from "@/lib/nav-config";
+import { useI18n } from "@/components/i18n/language-provider";
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const { t } = useI18n();
 
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 md:hidden"
-      aria-label="เมนูหลัก"
+      aria-label={t("nav.mainMenu")}
     >
       <div className="mx-auto grid max-w-lg grid-cols-5 gap-1 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
         {bottomNavItems.map((item) => {
@@ -29,7 +31,7 @@ export function MobileBottomNav() {
               )}
             >
               <Icon className={cn("h-5 w-5", active && "text-primary")} />
-              <span className="leading-tight text-center">{item.title}</span>
+              <span className="leading-tight text-center">{t(item.titleKey)}</span>
             </Link>
           );
         })}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono, Inter, Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
+import { LanguageProvider } from "@/components/i18n/language-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const inter = Inter({
@@ -36,8 +37,10 @@ export default function RootLayout({
       className={`${inter.variable} ${notoSansThai.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background font-sans">
-        <TooltipProvider>{children}</TooltipProvider>
-        <Toaster position="top-center" />
+        <LanguageProvider>
+          <TooltipProvider>{children}</TooltipProvider>
+          <Toaster position="top-center" />
+        </LanguageProvider>
       </body>
     </html>
   );

@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 export interface NavItem {
-  title: string;
+  titleKey: string;
   href: string;
   icon: LucideIcon;
   /** แสดงใน bottom nav บนมือถือ */
@@ -19,25 +19,25 @@ export interface NavItem {
 }
 
 export const mainNavItems: NavItem[] = [
-  { title: "แดชบอร์ด", href: "/dashboard", icon: LayoutDashboard, showInBottomNav: true },
-  { title: "แผนการสอน", href: "/dashboard/lesson-plans", icon: FileText, showInBottomNav: true },
+  { titleKey: "nav.dashboard", href: "/dashboard", icon: LayoutDashboard, showInBottomNav: true },
+  { titleKey: "nav.lessonPlans", href: "/dashboard/lesson-plans", icon: FileText, showInBottomNav: true },
   {
-    title: "สร้างด้วย AI",
+    titleKey: "nav.aiBuilder",
     href: "/dashboard/lesson-builder",
     icon: Sparkles,
     showInBottomNav: false,
   },
-  { title: "โปรเจกต์", href: "/dashboard/projects", icon: FolderOpen, showInBottomNav: false },
-  { title: "นำเข้าไฟล์", href: "/dashboard/upload", icon: Upload, showInBottomNav: true },
+  { titleKey: "nav.projects", href: "/dashboard/projects", icon: FolderOpen, showInBottomNav: false },
+  { titleKey: "nav.upload", href: "/dashboard/upload", icon: Upload, showInBottomNav: true },
 ];
 
 export const secondaryNavItems: NavItem[] = [
-  { title: "ตั้งค่า", href: "/dashboard/settings", icon: Settings, showInBottomNav: true },
-  { title: "ช่วยเหลือ", href: "/dashboard/help", icon: HelpCircle, showInBottomNav: false },
+  { titleKey: "nav.settings", href: "/dashboard/settings", icon: Settings, showInBottomNav: true },
+  { titleKey: "nav.help", href: "/dashboard/help", icon: HelpCircle, showInBottomNav: false },
 ];
 
 export const createNavItem: NavItem = {
-  title: "สร้างใหม่",
+  titleKey: "nav.createLessonPlan",
   href: "/dashboard/lesson-plans/new",
   icon: FilePlus,
   showInBottomNav: false,

@@ -15,12 +15,15 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { setAppTheme } from "@/components/layout/theme-sync";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
+import { useI18n } from "@/components/i18n/language-provider";
 
 interface TopbarProps {
   onMenuClick?: () => void;
 }
 
 export function Topbar({ onMenuClick }: TopbarProps) {
+  const { t } = useI18n();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [notificationCount] = useState(3);
 
@@ -42,17 +45,19 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           size="icon"
           className="shrink-0 md:hidden"
           onClick={onMenuClick}
-          aria-label="เปิดเมนู"
+          aria-label={t("nav.openMenu")}
         >
           <Menu className="h-5 w-5" />
         </Button>
         <div className="relative hidden min-w-0 flex-1 max-w-md sm:block">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input type="search" placeholder="ค้นหาแผนการสอน..." className="w-full pl-10" />
+          <Input type="search" placeholder={t("common.searchPlaceholder")} className="w-full pl-10" />
         </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-1 md:gap-3">
+        <LanguageSwitcher className="hidden sm:flex" />
+
         <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-muted-foreground">
           {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
@@ -72,11 +77,11 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel>การแจ้งเตือน</DropdownMenuLabel>
+            <DropdownMenuLabel>{t("common.notifications")}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="flex flex-col items-start gap-1 p-3">
-              <p className="text-sm font-medium">แผนการสอนถูกสร้างสำเร็จ</p>
-              <p className="text-xs text-muted-foreground">5 นาทีที่แล้ว</p>
+              <p className="text-sm font-medium">{t("common.planCreatedSuccess")}</p>
+              <p className="text-xs text-muted-foreground">{t("common.minutesAgo")}</p>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -88,10 +93,10 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>บัญชีของฉัน</DropdownMenuLabel>
+            <DropdownMenuLabel>{t("common.myAccount")}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/dashboard/settings">ตั้งค่า</Link>
+              <Link href="/dashboard/settings">{t("nav.settings")}</Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

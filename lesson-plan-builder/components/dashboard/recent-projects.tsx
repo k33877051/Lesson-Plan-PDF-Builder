@@ -19,50 +19,47 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useI18n } from "@/components/i18n/language-provider";
+import { formatDateByLocale } from "@/lib/i18n";
 
 export interface RecentLessonPlan {
   id: string;
   title: string;
-  subject: string;
-  grade: string;
+  subjectKey: string;
+  gradeKey: string;
   status: string;
   updatedAt: string;
 }
 
-const statusMap = {
-  completed: { label: "เสร็จสมบูรณ์", variant: "default" as const },
-  published: { label: "เผยแพร่แล้ว", variant: "default" as const },
-  draft: { label: "ฉบับร่าง", variant: "secondary" as const },
-  archived: { label: "จัดเก็บ", variant: "outline" as const },
-};
-
 function ActionButtons({ projectId }: { projectId: string }) {
+  const { t } = useI18n();
+
   return (
     <div className="flex items-center gap-1">
       <Button variant="ghost" size="icon" asChild>
-        <Link href={`/editor/${projectId}`} aria-label="แก้ไข">
+        <Link href={`/editor/${projectId}`} aria-label={t("common.edit")}>
           <Edit className="h-4 w-4" />
         </Link>
       </Button>
       <Button variant="ghost" size="icon" asChild>
-        <Link href={`/preview/${projectId}`} aria-label="ดูตัวอย่าง">
+        <Link href={`/preview/${projectId}`} aria-label={t("common.preview")}>
           <Eye className="h-4 w-4" />
         </Link>
       </Button>
       <Button variant="ghost" size="icon" asChild>
-        <Link href={`/preview/${projectId}`} aria-label="ส่งออก PDF">
+        <Link href={`/preview/${projectId}`} aria-label={t("common.exportPdf")}>
           <Download className="h-4 w-4" />
         </Link>
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label="เมนูเพิ่มเติม">
+          <Button variant="ghost" size="icon" aria-label={t("common.moreMenu")}>
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem asChild>
-            <Link href={`/preview/${projectId}`}>ส่งออก PDF</Link>
+            <Link href={`/preview/${projectId}`}>{t("common.exportPdf")}</Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -71,18 +68,41 @@ function ActionButtons({ projectId }: { projectId: string }) {
 }
 
 export function RecentProjects({ lessonPlans }: { lessonPlans: RecentLessonPlan[] }) {
+  const { t, locale } = useI18n();
+
+  const statusVariants = {
+    completed: "default" as const,
+    published: "default" as const,
+    draft: "secondary" as const,
+    archived: "outline" as const,
+  };
+
+  const getStatusLabel = (status: string) => {
+    const key = `status.${status}` as const;
+    const label = t(key);
+    return label === key ? t("status.draft") : label;
+  };
+
+  const getSubjectLabel = (subjectKey: string) => {
+    const label = t(`subjects.${subjectKey}`);
+    return label === `subjects.${subjectKey}` ? subjectKey : label;
+  };
+
+  const getGradeLabel = (gradeKey: string) => {
+    const label = t(`grades.${gradeKey}`);
+    return label === `grades.${gradeKey}` ? gradeKey : label;
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <CardTitle className="text-lg">แผนการสอนล่าสุด</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            แผนการสอนที่คุณทำงานด้วยล่าสุด
-          </p>
+          <CardTitle className="text-lg">{t("dashboard.recentPlans")}</CardTitle>
+          <p className="text-sm text-muted-foreground">{t("dashboard.recentPlansDesc")}</p>
         </div>
         <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
           <Link href="/dashboard/lesson-plans">
-            ดูทั้งหมด
+            {t("common.viewAll")}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>
@@ -91,18 +111,16 @@ export function RecentProjects({ lessonPlans }: { lessonPlans: RecentLessonPlan[
         {lessonPlans.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-10 text-center">
             <FileText className="mb-3 h-8 w-8 text-muted-foreground" />
-            <p className="font-medium">ยังไม่มีแผนการสอนในฐานข้อมูล</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              สร้างแผนการสอนใหม่เพื่อให้แสดงในรายการล่าสุด
-            </p>
+            <p className="font-medium">{t("dashboard.emptyTitle")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("dashboard.emptyDesc")}</p>
           </div>
         ) : (
           <>
-            {/* มือถือ: แสดงเป็น card */}
             <div className="space-y-3 md:hidden">
               {lessonPlans.map((project) => {
-                const status =
-                  statusMap[project.status as keyof typeof statusMap] ?? statusMap.draft;
+                const variant =
+                  statusVariants[project.status as keyof typeof statusVariants] ??
+                  statusVariants.draft;
                 return (
                   <div
                     key={project.id}
@@ -115,13 +133,15 @@ export function RecentProjects({ lessonPlans }: { lessonPlans: RecentLessonPlan[
                       <div className="min-w-0 flex-1">
                         <p className="font-medium leading-snug">{project.title}</p>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          {project.subject} • {project.grade}
+                          {getSubjectLabel(project.subjectKey)} • {getGradeLabel(project.gradeKey)}
                         </p>
                       </div>
-                      <Badge variant={status.variant}>{status.label}</Badge>
+                      <Badge variant={variant}>{getStatusLabel(project.status)}</Badge>
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs text-muted-foreground">{project.updatedAt}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDateByLocale(project.updatedAt, locale)}
+                      </span>
                       <ActionButtons projectId={project.id} />
                     </div>
                   </div>
@@ -129,23 +149,23 @@ export function RecentProjects({ lessonPlans }: { lessonPlans: RecentLessonPlan[
               })}
             </div>
 
-            {/* Desktop: ตาราง */}
             <div className="hidden md:block">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ชื่อแผนการสอน</TableHead>
-                    <TableHead>วิชา</TableHead>
-                    <TableHead>ระดับชั้น</TableHead>
-                    <TableHead>สถานะ</TableHead>
-                    <TableHead>อัปเดตล่าสุด</TableHead>
-                    <TableHead className="text-right">การดำเนินการ</TableHead>
+                    <TableHead>{t("dashboard.table.title")}</TableHead>
+                    <TableHead>{t("dashboard.table.subject")}</TableHead>
+                    <TableHead>{t("dashboard.table.grade")}</TableHead>
+                    <TableHead>{t("dashboard.table.status")}</TableHead>
+                    <TableHead>{t("dashboard.table.updated")}</TableHead>
+                    <TableHead className="text-right">{t("dashboard.table.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {lessonPlans.map((project) => {
-                    const status =
-                      statusMap[project.status as keyof typeof statusMap] ?? statusMap.draft;
+                    const variant =
+                      statusVariants[project.status as keyof typeof statusVariants] ??
+                      statusVariants.draft;
                     return (
                       <TableRow key={project.id}>
                         <TableCell>
@@ -156,13 +176,13 @@ export function RecentProjects({ lessonPlans }: { lessonPlans: RecentLessonPlan[
                             <div className="font-medium">{project.title}</div>
                           </div>
                         </TableCell>
-                        <TableCell>{project.subject}</TableCell>
-                        <TableCell>{project.grade}</TableCell>
+                        <TableCell>{getSubjectLabel(project.subjectKey)}</TableCell>
+                        <TableCell>{getGradeLabel(project.gradeKey)}</TableCell>
                         <TableCell>
-                          <Badge variant={status.variant}>{status.label}</Badge>
+                          <Badge variant={variant}>{getStatusLabel(project.status)}</Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {project.updatedAt}
+                          {formatDateByLocale(project.updatedAt, locale)}
                         </TableCell>
                         <TableCell className="text-right">
                           <ActionButtons projectId={project.id} />

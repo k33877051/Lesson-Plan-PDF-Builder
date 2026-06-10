@@ -9,36 +9,39 @@ import {
   FileEdit,
   ArrowRight,
 } from "lucide-react";
-
-const actions = [
-  {
-    title: "สร้างแผนการสอนใหม่",
-    description: "เริ่มสร้างแผนการสอนจากรูปแบบเปล่า",
-    icon: FilePlus,
-    href: "/dashboard/lesson-plans/new",
-    variant: "default" as const,
-  },
-  {
-    title: "นำเข้าไฟล์",
-    description: "อัปโหลด PDF และสร้างโปรเจกต์จริง",
-    icon: Upload,
-    href: "/dashboard/projects/new",
-    variant: "outline" as const,
-  },
-  {
-    title: "แผนการสอนทั้งหมด",
-    description: "เปิดรายการแผนการสอนจากฐานข้อมูล",
-    icon: FileEdit,
-    href: "/dashboard/lesson-plans",
-    variant: "outline" as const,
-  },
-];
+import { useI18n } from "@/components/i18n/language-provider";
 
 export function QuickActions() {
+  const { t } = useI18n();
+
+  const actions = [
+    {
+      title: t("dashboard.actions.createNew"),
+      description: t("dashboard.actions.createNewDesc"),
+      icon: FilePlus,
+      href: "/dashboard/lesson-plans/new",
+      variant: "default" as const,
+    },
+    {
+      title: t("dashboard.actions.import"),
+      description: t("dashboard.actions.importDesc"),
+      icon: Upload,
+      href: "/dashboard/projects/new",
+      variant: "outline" as const,
+    },
+    {
+      title: t("dashboard.actions.allPlans"),
+      description: t("dashboard.actions.allPlansDesc"),
+      icon: FileEdit,
+      href: "/dashboard/lesson-plans",
+      variant: "outline" as const,
+    },
+  ];
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">ทำงานอย่างรวดเร็ว</CardTitle>
+        <CardTitle className="text-lg">{t("dashboard.quickActions")}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 md:grid-cols-3">
