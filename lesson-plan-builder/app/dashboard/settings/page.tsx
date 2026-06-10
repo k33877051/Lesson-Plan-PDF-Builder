@@ -42,7 +42,7 @@ import { ObjectRegistryPanel } from "@/components/system/ObjectRegistryPanel";
 import { PageHeader } from "@/components/layout/page-header";
 import { ResponsiveContainer } from "@/components/layout/responsive-container";
 import { setAppTheme } from "@/components/layout/theme-sync";
-import { setAppLanguage } from "@/components/i18n/language-provider";
+import { setAppLanguage, useI18n } from "@/components/i18n/language-provider";
 
 interface SettingsResponse {
   success: boolean;
@@ -69,6 +69,7 @@ interface SettingsResponse {
 }
 
 export default function SettingsPage() {
+  const { t } = useI18n();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -115,7 +116,7 @@ export default function SettingsPage() {
         const result: SettingsResponse = await response.json();
 
         if (!response.ok || !result.success || !result.data) {
-          throw new Error(result.error || "ไม่สามารถโหลดการตั้งค่าได้");
+          throw new Error(result.error || t("settings.loadError"));
         }
 
         const data = result.data;
@@ -149,7 +150,7 @@ export default function SettingsPage() {
           margin: data.margin,
         });
       } catch (err) {
-        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการโหลดการตั้งค่า");
+        setError(err instanceof Error ? err.message : t("common.loadError"));
       } finally {
         setIsLoading(false);
       }
@@ -176,7 +177,7 @@ export default function SettingsPage() {
       const result: SettingsResponse = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "ไม่สามารถบันทึกการตั้งค่าได้");
+        throw new Error(result.error || t("settings.saveError"));
       }
 
       setAppTheme(appearance.theme as "light" | "dark" | "system");
@@ -184,7 +185,7 @@ export default function SettingsPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการบันทึกการตั้งค่า");
+      setError(err instanceof Error ? err.message : t("settings.saveError"));
     } finally {
       setIsSaving(false);
     }
@@ -193,8 +194,8 @@ export default function SettingsPage() {
   return (
     <ResponsiveContainer className="space-y-6">
       <PageHeader
-        title="ตั้งค่า"
-        description="จัดการการตั้งค่าบัญชีและการใช้งานแอปพลิเคชัน"
+        title={t("settings.title")}
+        description={t("settings.description")}
       />
 
       {error && (
@@ -207,7 +208,7 @@ export default function SettingsPage() {
         <Card>
           <CardContent className="flex items-center gap-3 py-6">
             <Loader2 className="h-5 w-5 animate-spin" />
-            <span>กำลังโหลดการตั้งค่าจากฐานข้อมูล...</span>
+            <span>{t("settings.loading")}</span>
           </CardContent>
         </Card>
       )}
@@ -216,35 +217,35 @@ export default function SettingsPage() {
         <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto md:grid md:grid-cols-4 lg:grid-cols-8 lg:w-auto">
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
-            <span className="hidden sm:inline">โปรไฟล์</span>
+            <span className="hidden sm:inline">{t("settings.tabs.profile")}</span>
           </TabsTrigger>
           <TabsTrigger value="appearance" className="gap-2">
             <Palette className="h-4 w-4" />
-            <span className="hidden sm:inline">รูปลักษณ์</span>
+            <span className="hidden sm:inline">{t("settings.tabs.appearance")}</span>
           </TabsTrigger>
           <TabsTrigger value="notifications" className="gap-2">
             <Bell className="h-4 w-4" />
-            <span className="hidden sm:inline">แจ้งเตือน</span>
+            <span className="hidden sm:inline">{t("settings.tabs.notifications")}</span>
           </TabsTrigger>
           <TabsTrigger value="pdf" className="gap-2">
             <FileText className="h-4 w-4" />
-            <span className="hidden sm:inline">PDF</span>
+            <span className="hidden sm:inline">{t("settings.tabs.pdf")}</span>
           </TabsTrigger>
           <TabsTrigger value="ai-providers" className="gap-2">
             <Cpu className="h-4 w-4" />
-            <span className="hidden sm:inline">AI Providers</span>
+            <span className="hidden sm:inline">{t("settings.tabs.aiProviders")}</span>
           </TabsTrigger>
           <TabsTrigger value="ai-functions" className="gap-2">
             <Bot className="h-4 w-4" />
-            <span className="hidden sm:inline">AI Functions</span>
+            <span className="hidden sm:inline">{t("settings.tabs.aiFunctions")}</span>
           </TabsTrigger>
           <TabsTrigger value="registry" className="gap-2">
             <Database className="h-4 w-4" />
-            <span className="hidden sm:inline">Registry</span>
+            <span className="hidden sm:inline">{t("settings.tabs.registry")}</span>
           </TabsTrigger>
           <TabsTrigger value="github" className="gap-2">
             <GitFork className="h-4 w-4" />
-            <span className="hidden sm:inline">GitHub</span>
+            <span className="hidden sm:inline">{t("settings.tabs.github")}</span>
           </TabsTrigger>
         </TabsList>
 
@@ -254,30 +255,28 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                ข้อมูลส่วนตัว
+                {t("settings.profile.title")}
               </CardTitle>
-              <CardDescription>
-                จัดการข้อมูลส่วนตัวและข้อมูลติดต่อของคุณ
-              </CardDescription>
+              <CardDescription>{t("settings.profile.description")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">ชื่อ-นามสกุล</Label>
+                  <Label htmlFor="name">{t("settings.profile.name")}</Label>
                   <Input
                     id="name"
                     value={profile.name}
                     onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                    placeholder="ชื่อ-นามสกุล"
+                    placeholder={t("settings.profile.namePlaceholder")}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="position">ตำแหน่ง</Label>
+                  <Label htmlFor="position">{t("settings.profile.position")}</Label>
                   <Input
                     id="position"
                     value={profile.position}
                     onChange={(e) => setProfile({ ...profile, position: e.target.value })}
-                    placeholder="เช่น ครูชำนาญการ"
+                    placeholder={t("settings.profile.positionPlaceholder")}
                   />
                 </div>
               </div>
@@ -286,7 +285,7 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label htmlFor="email" className="flex items-center gap-2">
                     <Mail className="h-4 w-4" />
-                    อีเมล
+                    {t("settings.profile.email")}
                   </Label>
                   <Input
                     id="email"
@@ -299,7 +298,7 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label htmlFor="phone" className="flex items-center gap-2">
                     <Phone className="h-4 w-4" />
-                    เบอร์โทรศัพท์
+                    {t("settings.profile.phone")}
                   </Label>
                   <Input
                     id="phone"
@@ -315,13 +314,13 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <Label htmlFor="school" className="flex items-center gap-2">
                   <School className="h-4 w-4" />
-                  โรงเรียน
+                  {t("settings.profile.school")}
                 </Label>
                 <Input
                   id="school"
                   value={profile.school}
                   onChange={(e) => setProfile({ ...profile, school: e.target.value })}
-                  placeholder="ชื่อโรงเรียน"
+                  placeholder={t("settings.profile.schoolPlaceholder")}
                 />
               </div>
             </CardContent>
@@ -334,15 +333,13 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Palette className="h-5 w-5" />
-                ธีมและรูปลักษณ์
+                {t("settings.appearance.title")}
               </CardTitle>
-              <CardDescription>
-                ปรับแต่งธีมสีและการแสดงผลของแอปพลิเคชัน
-              </CardDescription>
+              <CardDescription>{t("settings.appearance.description")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label>ธีม</Label>
+                <Label>{t("settings.appearance.theme")}</Label>
                 <Select
                   value={appearance.theme}
                   onValueChange={(value) => {
@@ -354,9 +351,9 @@ export default function SettingsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="light">สว่าง</SelectItem>
-                    <SelectItem value="dark">มืด</SelectItem>
-                    <SelectItem value="system">ตามระบบ</SelectItem>
+                    <SelectItem value="light">{t("settings.themeLight")}</SelectItem>
+                    <SelectItem value="dark">{t("settings.themeDark")}</SelectItem>
+                    <SelectItem value="system">{t("settings.themeSystem")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -366,7 +363,7 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Languages className="h-4 w-4" />
-                  ภาษา
+                  {t("settings.appearance.language")}
                 </Label>
                 <Select
                   value={appearance.language}
@@ -388,7 +385,7 @@ export default function SettingsPage() {
               <Separator />
 
               <div className="space-y-2">
-                <Label>ขนาดตัวอักษร</Label>
+                <Label>{t("settings.appearance.fontSize")}</Label>
                 <Select
                   value={appearance.fontSize}
                   onValueChange={(value) => setAppearance({ ...appearance, fontSize: value })}
@@ -397,9 +394,9 @@ export default function SettingsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="small">เล็ก</SelectItem>
-                    <SelectItem value="medium">ปกติ</SelectItem>
-                    <SelectItem value="large">ใหญ่</SelectItem>
+                    <SelectItem value="small">{t("settings.appearance.fontSmall")}</SelectItem>
+                    <SelectItem value="medium">{t("settings.appearance.fontMedium")}</SelectItem>
+                    <SelectItem value="large">{t("settings.appearance.fontLarge")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -413,18 +410,16 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5" />
-                การแจ้งเตือน
+                {t("settings.notifications.title")}
               </CardTitle>
-              <CardDescription>
-                จัดการการแจ้งเตือนที่คุณต้องการรับ
-              </CardDescription>
+              <CardDescription>{t("settings.notifications.description")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>แจ้งเตือนทางอีเมล</Label>
+                  <Label>{t("settings.notifications.emailAlerts")}</Label>
                   <p className="text-sm text-muted-foreground">
-                    รับการแจ้งเตือนสำคัญทางอีเมล
+                    {t("settings.notifications.emailAlertsDesc")}
                   </p>
                 </div>
                 <Switch
@@ -439,9 +434,9 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>ส่งออก PDF เสร็จสิ้น</Label>
+                  <Label>{t("settings.notifications.exportComplete")}</Label>
                   <p className="text-sm text-muted-foreground">
-                    แจ้งเตือนเมื่อการส่งออก PDF เสร็จสมบูรณ์
+                    {t("settings.notifications.exportCompleteDesc")}
                   </p>
                 </div>
                 <Switch
@@ -456,9 +451,9 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>ฟีเจอร์ใหม่และอัปเดต</Label>
+                  <Label>{t("settings.notifications.newFeatures")}</Label>
                   <p className="text-sm text-muted-foreground">
-                    รับข่าวสารเกี่ยวกับฟีเจอร์ใหม่และการอัปเดต
+                    {t("settings.notifications.newFeaturesDesc")}
                   </p>
                 </div>
                 <Switch
@@ -473,9 +468,9 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>รายงานประจำสัปดาห์</Label>
+                  <Label>{t("settings.notifications.weeklyReport")}</Label>
                   <p className="text-sm text-muted-foreground">
-                    รับสรุปกิจกรรมประจำสัปดาห์ทางอีเมล
+                    {t("settings.notifications.weeklyReportDesc")}
                   </p>
                 </div>
                 <Switch
@@ -495,15 +490,13 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Printer className="h-5 w-5" />
-                การตั้งค่า PDF
+                {t("settings.pdf.title")}
               </CardTitle>
-              <CardDescription>
-                ตั้งค่าเริ่มต้นสำหรับการส่งออก PDF
-              </CardDescription>
+              <CardDescription>{t("settings.pdf.description")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label>ฟอนต์เริ่มต้น</Label>
+                <Label>{t("settings.pdf.defaultFont")}</Label>
                 <Select
                   value={pdfSettings.defaultFont}
                   onValueChange={(value) => setPdfSettings({ ...pdfSettings, defaultFont: value })}
@@ -522,7 +515,7 @@ export default function SettingsPage() {
               <Separator />
 
               <div className="space-y-2">
-                <Label>ขนาดกระดาษเริ่มต้น</Label>
+                <Label>{t("settings.pdf.pageSize")}</Label>
                 <Select
                   value={pdfSettings.pageSize}
                   onValueChange={(value) => setPdfSettings({ ...pdfSettings, pageSize: value })}
@@ -542,9 +535,9 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>แสดงส่วนหัว (Header)</Label>
+                  <Label>{t("settings.pdf.showHeader")}</Label>
                   <p className="text-sm text-muted-foreground">
-                    แสดงส่วนหัวเอกสารใน PDF ที่ส่งออก
+                    {t("settings.pdf.showHeaderDesc")}
                   </p>
                 </div>
                 <Switch
@@ -559,9 +552,9 @@ export default function SettingsPage() {
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>แสดงส่วนท้าย (Footer)</Label>
+                  <Label>{t("settings.pdf.showFooter")}</Label>
                   <p className="text-sm text-muted-foreground">
-                    แสดงส่วนท้ายเอกสารใน PDF ที่ส่งออก
+                    {t("settings.pdf.showFooterDesc")}
                   </p>
                 </div>
                 <Switch
@@ -603,7 +596,7 @@ export default function SettingsPage() {
           <Alert className="flex-1 bg-green-50 border-green-200">
             <CheckCircle className="h-4 w-4 text-green-500" />
             <AlertDescription className="text-green-700">
-              บันทึกการตั้งค่าเรียบร้อยแล้ว
+              {t("settings.saveSuccess")}
             </AlertDescription>
           </Alert>
         )}
@@ -615,12 +608,12 @@ export default function SettingsPage() {
           {isSaving ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              กำลังบันทึก...
+              {t("common.saving")}
             </>
           ) : (
             <>
               <Save className="mr-2 h-4 w-4" />
-              บันทึกการตั้งค่า
+              {t("settings.saveButton")}
             </>
           )}
         </Button>

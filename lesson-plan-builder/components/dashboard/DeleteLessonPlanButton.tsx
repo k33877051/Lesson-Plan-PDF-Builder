@@ -5,6 +5,7 @@ import { useTransition } from "react";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { useI18n } from "@/components/i18n/language-provider";
 
 interface DeleteLessonPlanButtonProps {
   lessonPlanId: string;
@@ -15,12 +16,13 @@ export function DeleteLessonPlanButton({
   lessonPlanId,
   lessonTitle,
 }: DeleteLessonPlanButtonProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const handleDelete = () => {
     const confirmed = window.confirm(
-      `ต้องการลบแผนการสอน "${lessonTitle}" ใช่หรือไม่?`
+      t("lessonPlans.deleteConfirm", { title: lessonTitle })
     );
 
     if (!confirmed) return;
@@ -33,15 +35,13 @@ export function DeleteLessonPlanButton({
         const result = await response.json().catch(() => ({}));
 
         if (!response.ok || !result.success) {
-          throw new Error(result.error || "ไม่สามารถลบแผนการสอนได้");
+          throw new Error(result.error || t("lessonPlans.deleteError"));
         }
 
-        toast.success("ลบแผนการสอนสำเร็จ");
+        toast.success(t("lessonPlans.deleteSuccess"));
         router.refresh();
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการลบ"
-        );
+        toast.error(error instanceof Error ? error.message : t("lessonPlans.deleteError"));
       }
     });
   };
@@ -56,7 +56,7 @@ export function DeleteLessonPlanButton({
       }}
     >
       <Trash2 className="mr-2 h-4 w-4" />
-      {isPending ? "กำลังลบ..." : "ลบ"}
+      {isPending ? t("common.deleting") : t("common.delete")}
     </DropdownMenuItem>
   );
 }

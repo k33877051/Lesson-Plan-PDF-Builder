@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
+import { useI18n } from "@/components/i18n/language-provider";
 
 export interface EditorWizardStep {
   id: string;
@@ -22,6 +23,7 @@ export function EditorWizard({
   onStepChange,
   className,
 }: EditorWizardProps) {
+  const { t } = useI18n();
   const currentIndex = steps.findIndex((s) => s.id === currentStep);
 
   return (
@@ -68,7 +70,7 @@ export function EditorWizard({
       <div className="sm:hidden">
         <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
           <span>
-            ขั้นตอน {currentIndex + 1}/{steps.length}
+            {t("editor.wizardStep", { current: currentIndex + 1, total: steps.length })}
           </span>
           <span className="font-medium text-foreground">
             {steps[currentIndex]?.shortLabel ?? steps[currentIndex]?.label}
@@ -85,9 +87,4 @@ export function EditorWizard({
   );
 }
 
-export const EDITOR_WIZARD_STEPS: EditorWizardStep[] = [
-  { id: "basic", label: "ข้อมูลพื้นฐาน", shortLabel: "พื้นฐาน" },
-  { id: "content", label: "เนื้อหาแผน", shortLabel: "เนื้อหา" },
-  { id: "research", label: "ค้นคว้า AI", shortLabel: "ค้นคว้า" },
-  { id: "review", label: "ตรวจสอบ", shortLabel: "ตรวจสอบ" },
-];
+export const EDITOR_WIZARD_STEP_IDS = ["basic", "content", "research", "review"] as const;
